@@ -18,6 +18,17 @@ queda registrado y se puede deshacer.
 El plan y el registro de movimientos de cada organización quedan en `<carpeta organizada>\_reportes\`.
 Con ese registro se puede deshacer más tarde ("Deshacer una organización anterior" en el primer paso).
 
+## Generar el ejecutable
+
+Un único `BackupTidy.exe` (~48 MB) que no necesita .NET instalado:
+
+```
+dotnet publish src/BackupTidy.App -p:PublishProfile=win-x64
+```
+
+Queda en `publish\win-x64\BackupTidy.exe`. No está firmado: la primera vez Windows SmartScreen
+puede avisar ("Más información" → "Ejecutar de todas formas").
+
 ## Requisitos de desarrollo
 
 - [SDK de .NET 10](https://dotnet.microsoft.com/download/dotnet/10.0)

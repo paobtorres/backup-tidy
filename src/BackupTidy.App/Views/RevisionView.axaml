@@ -48,7 +48,8 @@
                     </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
                         <Button Content="Guardar plan (CSV)…" Command="{Binding GuardarPlanCommand}" VerticalAlignment="Center" />
-                        <Button Classes="accent grande" Command="{Binding PedirConfirmacionCommand}">
+                        <Button Classes="accent grande" Command="{Binding PedirConfirmacionCommand}"
+                                AutomationProperties.Name="Organizar">
                             <StackPanel Spacing="1">
                                 <TextBlock Text="Organizar" FontWeight="SemiBold" HorizontalAlignment="Center" />
                                 <TextBlock Text="{Binding TextoAMover}" FontSize="12" Opacity="0.85" HorizontalAlignment="Center" />

@@ -5,6 +5,14 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\BackupTidy.ico</ApplicationIcon>
+    <!-- El ejecutable se llama BackupTidy.exe; el espacio de nombres sigue siendo BackupTidy.App -->
+    <AssemblyName>BackupTidy</AssemblyName>
+    <RootNamespace>BackupTidy.App</RootNamespace>
+    <Version>0.1.0</Version>
+    <Product>BackupTidy</Product>
+    <Description>Organiza backups de celulares sin borrar nada</Description>
+    <Copyright>Pao</Copyright>
   </PropertyGroup>
 
   <ItemGroup>

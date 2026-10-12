@@ -3,7 +3,7 @@
         xmlns:vm="using:BackupTidy.App.ViewModels"
         x:Class="BackupTidy.App.Views.MainWindow"
         x:DataType="vm:MainViewModel"
-        Icon="/Assets/avalonia-logo.ico"
+        Icon="/Assets/BackupTidy.ico"
         Title="BackupTidy"
         Width="1240" Height="800" MinWidth="980" MinHeight="620"
         WindowStartupLocation="CenterScreen"
