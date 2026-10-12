@@ -107,19 +107,19 @@ public static class Analizador
                     ? (CategoriaPlan.Documentos, Path.Combine("Documentos", Clasificador.TipoDocumentoDe(f.Name).ToString()))
                     : (CategoriaPlan.DocumentosDuplicados, Path.Combine("Documentos", "_duplicados"));
                 plan.Add(new(categoria, f.FullName, DestinoLibre(Path.Combine(destino, carpeta, f.Name), usados), f.Length,
-                             Hash: hash, Nota: duplicado?.Nota ?? ""));
+                             Hash: hash, Nota: duplicado?.Nota ?? "", Relacionado: RutaOriginal(duplicado, origen)));
                 continue;
             }
             if (duplicado is not null)
             {
                 plan.Add(new(CategoriaPlan.Duplicados, f.FullName, DestinoLibre(Path.Combine(destino, "_duplicados", rel), usados),
-                             f.Length, Hash: hash, Nota: duplicado.Nota));
+                             f.Length, Hash: hash, Nota: duplicado.Nota, Relacionado: RutaOriginal(duplicado, origen)));
                 continue;
             }
             if (EsVistaPrevia(f))
             {
                 plan.Add(new(CategoriaPlan.Duplicados, f.FullName, DestinoLibre(Path.Combine(destino, "_duplicados_conversiones", rel), usados),
-                             f.Length, Hash: hash, Nota: NotaVistaPrevia));
+                             f.Length, Hash: hash, Nota: NotaVistaPrevia, Relacionado: Clasificador.OriginalDeVistaPrevia(f.FullName)));
                 continue;
             }
 
@@ -133,6 +133,7 @@ public static class Analizador
                                     fecha.Fecha.ToString("yyyy", CultureInfo.InvariantCulture),
                                     fecha.Fecha.ToString("yyyy-MM", CultureInfo.InvariantCulture), f.Name);
             var notas = new List<string>();
+            string? relacionado = null;
 
             if (cat is (CategoriaPlan.Fotos or CategoriaPlan.Videos or CategoriaPlan.LivePhotos)
                 && fecha.Fuente is (FuenteFecha.Exif or FuenteFecha.Metadatos))
@@ -142,21 +143,23 @@ public static class Analizador
                 {
                     // El HEIC original entra; el JPG convertido sale a revision
                     notas.Add("Reemplaza JPG convertido: " + string.Join(" ; ", mismaFoto.Organizados));
+                    relacionado = mismaFoto.Organizados[0];
                     foreach (var jpg in mismaFoto.Organizados.Where(reemplazados.Add))
                         plan.Add(new(CategoriaPlan.JpgReemplazado, jpg,
                                      DestinoLibre(Path.Combine(destino, "_jpg_reemplazados", relativaDeReferencia[jpg]), usados),
-                                     new FileInfo(jpg).Length, fecha.Fecha, Nota: "Reemplazado por: " + f.FullName));
+                                     new FileInfo(jpg).Length, fecha.Fecha, Nota: "Reemplazado por: " + f.FullName, Relacionado: f.FullName));
                 }
                 else if (mismaFoto.Accion == AccionMismaFoto.Probable)
                 {
                     notas.Add("Mismo nombre y mes que: " + mismaFoto.Organizados[0]);
+                    relacionado = mismaFoto.Organizados[0];
                     cat = CategoriaPlan.Duplicados;
                     dest = Path.Combine(destino, "_duplicados_probables", rel);
                 }
             }
             if (Clasificador.NotaContenido(rel, meta.ExtensionContenido) is string notaContenido) notas.Add(notaContenido);
 
-            plan.Add(new(cat, f.FullName, DestinoLibre(dest, usados), f.Length, fecha.Fecha, fecha.Fuente, hash, string.Join(" | ", notas)));
+            plan.Add(new(cat, f.FullName, DestinoLibre(dest, usados), f.Length, fecha.Fecha, fecha.Fuente, hash, string.Join(" | ", notas), relacionado));
         }
 
         plan.AddRange(descartes.Select(f => new FilaPlan(CategoriaPlan.Descartar, f.FullName, null, f.Length, Nota: NotaDescarte)));
@@ -169,6 +172,13 @@ public static class Analizador
              .Select(g => (g.Key, g.Count(), g.Sum(f => f.Bytes)))
              .OrderByDescending(r => r.Item3)
              .ToList();
+
+    static string? RutaOriginal(Duplicado? duplicado, string origen) => duplicado switch
+    {
+        null => null,
+        { Motivo: MotivoDuplicado.IgualA } => Path.Combine(origen, duplicado.Original),
+        _ => duplicado.Original,
+    };
 
     // Nunca sobrescribir: nombre_2.ext, nombre_3.ext...
     static string DestinoLibre(string ruta, HashSet<string> usados)

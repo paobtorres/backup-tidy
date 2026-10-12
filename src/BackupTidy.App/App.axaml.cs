@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using BackupTidy.App.Servicios;
 using BackupTidy.App.ViewModels;
 using BackupTidy.App.Views;
 
@@ -17,10 +18,9 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow
-            {
-                DataContext = new MainViewModel(),
-            };
+            var ventana = new MainWindow();
+            ventana.DataContext = new MainViewModel(new DialogosAvalonia(ventana));
+            desktop.MainWindow = ventana;
         }
 
         base.OnFrameworkInitializationCompleted();

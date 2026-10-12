@@ -1,0 +1,208 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BackupTidy.App.ViewModels"
+             xmlns:s="using:BackupTidy.App.Servicios"
+             x:Class="BackupTidy.App.Views.RevisionView"
+             x:DataType="vm:RevisionViewModel">
+
+    <UserControl.DataTemplates>
+        <DataTemplate DataType="s:Miniatura">
+            <LayoutTransformControl>
+                <LayoutTransformControl.LayoutTransform>
+                    <RotateTransform Angle="{Binding Rotacion}" />
+                </LayoutTransformControl.LayoutTransform>
+                <Image Source="{Binding Imagen}" Stretch="Uniform" />
+            </LayoutTransformControl>
+        </DataTemplate>
+    </UserControl.DataTemplates>
+
+    <UserControl.Styles>
+        <Style Selector="ListBox.categorias ListBoxItem">
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Margin" Value="0,1" />
+        </Style>
+        <Style Selector="ListBox.filas ListBoxItem">
+            <Setter Property="Padding" Value="12,7" />
+        </Style>
+        <Style Selector="Border.vista">
+            <Setter Property="Background" Value="{DynamicResource FondoSuave}" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Height" Value="200" />
+            <Setter Property="ClipToBounds" Value="True" />
+        </Style>
+    </UserControl.Styles>
+
+    <DockPanel>
+        <!-- Barra inferior: lo que se va a hacer -->
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource FondoTarjeta}" BorderBrush="{DynamicResource Borde}"
+                BorderThickness="0,1,0,0" Padding="28,14">
+            <Panel>
+                <Grid ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding !Confirmando}">
+                    <Button Content="← Cambiar carpetas" Command="{Binding VolverCommand}" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Margin="20,0" Spacing="4" VerticalAlignment="Center">
+                        <CheckBox IsChecked="{Binding EnviarDescartesAPapelera}" IsVisible="{Binding HayDescartes}"
+                                  Content="{Binding TextoDescartes}" />
+                        <TextBlock Classes="secundario" Text="{Binding Mensaje}" TextTrimming="CharacterEllipsis"
+                                   IsVisible="{Binding Mensaje, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+                        <Button Content="Guardar plan (CSV)…" Command="{Binding GuardarPlanCommand}" VerticalAlignment="Center" />
+                        <Button Classes="accent grande" Command="{Binding PedirConfirmacionCommand}">
+                            <StackPanel Spacing="1">
+                                <TextBlock Text="Organizar" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                                <TextBlock Text="{Binding TextoAMover}" FontSize="12" Opacity="0.85" HorizontalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+
+                <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding Confirmando}">
+                    <StackPanel Spacing="4" VerticalAlignment="Center">
+                        <TextBlock Classes="subtitulo" Text="¿Organizar ahora?" />
+                        <TextBlock Classes="secundario" TextWrapping="Wrap" Text="{Binding TextoConfirmacion}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="20,0,0,0">
+                        <Button Content="Todavía no" Command="{Binding CancelarConfirmacionCommand}" VerticalAlignment="Center" />
+                        <Button Classes="accent grande" Content="Sí, organizar" Command="{Binding OrganizarCommand}" />
+                    </StackPanel>
+                </Grid>
+            </Panel>
+        </Border>
+
+        <Grid ColumnDefinitions="270,*,340" Margin="20,18,20,16">
+            <!-- Resumen por categoria -->
+            <DockPanel Margin="0,0,16,0">
+                <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="4,0,0,12">
+                    <TextBlock Classes="titulo" Text="Revisa el plan" />
+                    <TextBlock Classes="secundario" Text="Elige una categoría para ver sus archivos." TextWrapping="Wrap" />
+                </StackPanel>
+                <Border DockPanel.Dock="Bottom" Classes="aviso" Margin="0,12,0,0" IsVisible="{Binding HayAvisos}">
+                    <ItemsControl ItemsSource="{Binding Avisos}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                                <TextBlock Text="{Binding}" TextWrapping="Wrap" Foreground="{DynamicResource Aviso}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+                <ListBox Classes="categorias" ItemsSource="{Binding Categorias}" SelectedItem="{Binding CategoriaSeleccionada}"
+                         Background="Transparent">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CategoriaVista">
+                            <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+                                <Ellipse Grid.RowSpan="2" Width="10" Height="10" Fill="{Binding Color}" Margin="0,5,10,0"
+                                         VerticalAlignment="Top" />
+                                <TextBlock Grid.Column="1" Text="{Binding Nombre}" FontWeight="SemiBold" />
+                                <TextBlock Grid.Column="2" Text="{Binding Cantidad}" FontWeight="SemiBold" Margin="8,0,0,0" />
+                                <TextBlock Grid.Row="1" Grid.Column="1" Classes="secundario" FontSize="12" Text="{Binding Descripcion}"
+                                           TextWrapping="Wrap" />
+                                <TextBlock Grid.Row="1" Grid.Column="2" Classes="secundario" FontSize="12" Text="{Binding Tamano}"
+                                           HorizontalAlignment="Right" Margin="8,0,0,0" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+
+            <!-- Lista de archivos -->
+            <Border Grid.Column="1" Classes="tarjeta" Padding="0">
+                <DockPanel>
+                    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="14,12">
+                        <TextBox Text="{Binding Busqueda}" PlaceholderText="Buscar por nombre o carpeta" />
+                        <CheckBox Grid.Column="1" Margin="12,0,0,0" IsChecked="{Binding SoloDudosas}" Content="{Binding TextoDudosas}" />
+                    </Grid>
+                    <Border DockPanel.Dock="Top" Height="1" Background="{DynamicResource Borde}" />
+                    <Panel>
+                        <ListBox Classes="filas" ItemsSource="{Binding FilasVisibles}" SelectedItem="{Binding Seleccionada}"
+                                 Background="Transparent">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:FilaVista">
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                        <Ellipse Width="8" Height="8" Fill="{Binding Color}" Margin="0,0,10,0" />
+                                        <StackPanel Grid.Column="1" Spacing="1">
+                                            <TextBlock Text="{Binding Nombre}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Classes="secundario" FontSize="12" TextTrimming="CharacterEllipsis">
+                                                <Run Text="→ " /><Run Text="{Binding Destino}" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Spacing="1" Margin="12,0,0,0" HorizontalAlignment="Right">
+                                            <TextBlock Text="{Binding Fecha}" HorizontalAlignment="Right" FontSize="12" />
+                                            <TextBlock Classes="secundario" Text="{Binding Tamano}" HorizontalAlignment="Right" FontSize="12" />
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <TextBlock Classes="secundario" Text="No hay archivos con este filtro." HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   IsVisible="{Binding SinFilas}" />
+                    </Panel>
+                </DockPanel>
+            </Border>
+
+            <!-- Detalle del archivo elegido -->
+            <ScrollViewer Grid.Column="2" Margin="16,0,0,0">
+                <Border Classes="tarjeta" Padding="18" IsVisible="{Binding Seleccionada, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <StackPanel Spacing="14" DataContext="{Binding Seleccionada}" x:DataType="vm:FilaVista">
+                        <StackPanel Spacing="4">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Ellipse Width="8" Height="8" Fill="{Binding Color}" />
+                                <TextBlock Classes="etiqueta" Text="{Binding NombreCategoria}" />
+                            </StackPanel>
+                            <TextBlock Classes="subtitulo" Text="{Binding Nombre}" TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <!-- Vista previa: el archivo y, si corresponde, el otro con el que se lo compara -->
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                            <StackPanel Spacing="4" Grid.ColumnSpan="2"
+                                        IsVisible="{Binding !TieneRelacionado}">
+                                <Border Classes="vista">
+                                    <Panel><TextBlock Classes="secundario" FontSize="12" Text="Sin vista previa" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding $parent[UserControl].((vm:RevisionViewModel)DataContext).VistaArchivo, Converter={x:Static ObjectConverters.IsNull}}" /><ContentControl Content="{Binding $parent[UserControl].((vm:RevisionViewModel)DataContext).VistaArchivo}" /></Panel>
+                                </Border>
+                            </StackPanel>
+                            <StackPanel Spacing="4" IsVisible="{Binding TieneRelacionado}">
+                                <TextBlock Classes="etiqueta" Text="Este archivo" />
+                                <Border Classes="vista" Height="150">
+                                    <Panel><TextBlock Classes="secundario" FontSize="12" Text="Sin vista previa" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding $parent[UserControl].((vm:RevisionViewModel)DataContext).VistaArchivo, Converter={x:Static ObjectConverters.IsNull}}" /><ContentControl Content="{Binding $parent[UserControl].((vm:RevisionViewModel)DataContext).VistaArchivo}" /></Panel>
+                                </Border>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="4" IsVisible="{Binding TieneRelacionado}">
+                                <TextBlock Classes="etiqueta" Text="{Binding EtiquetaRelacionado}" TextTrimming="CharacterEllipsis" />
+                                <Border Classes="vista" Height="150">
+                                    <Panel><TextBlock Classes="secundario" FontSize="12" Text="Sin vista previa" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding $parent[UserControl].((vm:RevisionViewModel)DataContext).VistaRelacionado, Converter={x:Static ObjectConverters.IsNull}}" /><ContentControl Content="{Binding $parent[UserControl].((vm:RevisionViewModel)DataContext).VistaRelacionado}" /></Panel>
+                                </Border>
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel Spacing="2">
+                            <TextBlock Classes="etiqueta" Text="VA A" />
+                            <TextBlock Text="{Binding Destino}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel Spacing="2" IsVisible="{Binding TieneFecha}">
+                            <TextBlock Classes="etiqueta" Text="FECHA" />
+                            <TextBlock Text="{Binding Fecha}" />
+                            <TextBlock Classes="secundario" FontSize="12" Text="{Binding Fuente}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel Spacing="2">
+                            <TextBlock Classes="etiqueta" Text="ESTÁ EN" />
+                            <TextBlock Text="{Binding Carpeta}" TextWrapping="Wrap" />
+                            <TextBlock Classes="secundario" FontSize="12" Text="{Binding Tamano}" />
+                        </StackPanel>
+                        <Border Classes="aviso" IsVisible="{Binding TieneNota}">
+                            <TextBlock Text="{Binding Fila.Nota}" TextWrapping="Wrap" Foreground="{DynamicResource Aviso}" />
+                        </Border>
+                        <WrapPanel ItemSpacing="14" LineSpacing="4">
+                            <Button Classes="enlace" Content="Mostrar en el Explorador"
+                                    Command="{Binding $parent[UserControl].((vm:RevisionViewModel)DataContext).MostrarEnExploradorCommand}"
+                                    CommandParameter="{Binding Fila.Origen}" />
+                            <Button Classes="enlace" Content="{Binding EtiquetaRelacionado}" IsVisible="{Binding TieneRelacionado}"
+                                    Command="{Binding $parent[UserControl].((vm:RevisionViewModel)DataContext).MostrarEnExploradorCommand}"
+                                    CommandParameter="{Binding Fila.Relacionado}" />
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+            </ScrollViewer>
+        </Grid>
+    </DockPanel>
+</UserControl>

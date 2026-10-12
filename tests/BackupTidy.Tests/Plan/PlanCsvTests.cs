@@ -16,7 +16,7 @@ public sealed class PlanCsvTests : IDisposable
         FilaPlan[] filas =
         [
             new(CategoriaPlan.Fotos, @"D:\b\IMG_1.JPG", @"D:\o\Fotos\2019\2019-03\IMG_1.JPG", 3_552_252,
-                new DateTime(2019, 3, 15, 12, 12, 0), FuenteFecha.Exif, "ABC123", "Es JPG con extension .MOV"),
+                new DateTime(2019, 3, 15, 12, 12, 0), FuenteFecha.Exif, "ABC123", "Es JPG con extension .MOV", @"D:\b\otra\IMG_1.JPG"),
             new(CategoriaPlan.Duplicados, @"D:\b\con ""comillas""; y punto y coma.jpg", @"D:\o\_duplicados\x.jpg", 1,
                 FuenteFecha: FuenteFecha.ArchivoDudoso, Nota: "linea 1\nlinea 2"),
             new(CategoriaPlan.Descartar, @"D:\b\nota.opus", null, 10, Nota: "Va a la Papelera"),
@@ -38,7 +38,7 @@ public sealed class PlanCsvTests : IDisposable
         var lineas = Encoding.UTF8.GetString(bytes).Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
 
         Assert.Equal([0xEF, 0xBB, 0xBF], bytes[..3]);   // BOM: Excel lo abre como UTF-8
-        Assert.Equal("\uFEFF\"Categoria\";\"Fecha\";\"FechaFuente\";\"TamanoMB\";\"Bytes\";\"Origen\";\"Destino\";\"Hash\";\"Nota\"", lineas[0]);
+        Assert.Equal("\uFEFF\"Categoria\";\"Fecha\";\"FechaFuente\";\"TamanoMB\";\"Bytes\";\"Origen\";\"Destino\";\"Hash\";\"Nota\";\"Relacionado\"", lineas[0]);
         Assert.StartsWith("\"Fotos\";\"2019-03-15 12:12\";\"archivo_dudoso\";", lineas[1]);
     }
 

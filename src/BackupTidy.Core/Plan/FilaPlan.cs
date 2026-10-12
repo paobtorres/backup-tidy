@@ -28,8 +28,13 @@ public enum CategoriaPlan
 /// <summary>Un movimiento previsto. No se ejecuta nada hasta que el usuario revisa el plan.</summary>
 /// <param name="Destino">Ruta completa de destino; null en los descartes.</param>
 /// <param name="Bytes">Tamano al analizar: si cambia antes de ejecutar, el archivo no se mueve.</param>
+/// <param name="Relacionado">
+/// Ruta completa del otro archivo que explica la decision: la copia que se conserva, la ya organizada,
+/// el original de una vista previa, el parecido o el HEIC que reemplaza a un JPG. Para revisar lado a lado.
+/// </param>
 public sealed record FilaPlan(CategoriaPlan Categoria, string Origen, string? Destino, long Bytes,
-                              DateTime? Fecha = null, FuenteFecha? FuenteFecha = null, string? Hash = null, string Nota = "")
+                              DateTime? Fecha = null, FuenteFecha? FuenteFecha = null, string? Hash = null, string Nota = "",
+                              string? Relacionado = null)
 {
     public static CategoriaPlan CategoriaDeMedia(CategoriaMedia categoria) => categoria switch
     {

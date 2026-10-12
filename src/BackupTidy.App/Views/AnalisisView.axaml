@@ -1,0 +1,44 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BackupTidy.App.ViewModels"
+             x:Class="BackupTidy.App.Views.AnalisisView"
+             x:DataType="vm:AnalisisViewModel">
+
+    <Border Classes="tarjeta" MaxWidth="620" Margin="28" VerticalAlignment="Center">
+        <StackPanel Spacing="18">
+            <StackPanel Spacing="6">
+                <TextBlock Classes="titulo" Text="Analizando el backup" />
+                <TextBlock Classes="secundario" Text="{Binding Origen}" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+
+            <ItemsControl ItemsSource="{Binding Etapas}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:EtapaVista">
+                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4">
+                            <Panel Width="18">
+                                <TextBlock Text="✓" Foreground="{DynamicResource Exito}" FontWeight="Bold" IsVisible="{Binding EsHecha}" />
+                                <TextBlock Text="●" Foreground="{DynamicResource Acento}" IsVisible="{Binding EsActual}" />
+                                <TextBlock Text="○" Classes="secundario" IsVisible="{Binding EsPendiente}" />
+                            </Panel>
+                            <TextBlock Text="{Binding Nombre}" FontWeight="{Binding EsActual, Converter={x:Static vm:Convertidores.Negrita}}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <StackPanel Spacing="8">
+                <ProgressBar Height="8" Minimum="0" Maximum="100" Value="{Binding Porcentaje}" IsIndeterminate="{Binding Indeterminado}" />
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Classes="secundario" Text="{Binding Detalle}" />
+                    <TextBlock Grid.Column="1" Classes="secundario" Text="{Binding Transcurrido}" />
+                </Grid>
+            </StackPanel>
+
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="secundario" TextWrapping="Wrap" VerticalAlignment="Center"
+                           Text="Solo se lee: cancelar no deja nada a medias." />
+                <Button Grid.Column="1" Content="Cancelar" Command="{Binding CancelarCommand}" />
+            </Grid>
+        </StackPanel>
+    </Border>
+</UserControl>

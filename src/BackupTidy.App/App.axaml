@@ -1,10 +1,129 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BackupTidy.App.ViewModels"
+             xmlns:v="using:BackupTidy.App.Views"
              x:Class="BackupTidy.App.App"
              RequestedThemeVariant="Default">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+
+    <!-- Cada paso tiene su vista -->
+    <Application.DataTemplates>
+        <DataTemplate DataType="vm:CarpetasViewModel"><v:CarpetasView /></DataTemplate>
+        <DataTemplate DataType="vm:AnalisisViewModel"><v:AnalisisView /></DataTemplate>
+        <DataTemplate DataType="vm:RevisionViewModel"><v:RevisionView /></DataTemplate>
+        <DataTemplate DataType="vm:ResultadoViewModel"><v:ResultadoView /></DataTemplate>
+    </Application.DataTemplates>
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="FondoApp" Color="#F4F5F7" />
+                    <SolidColorBrush x:Key="FondoTarjeta" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="FondoSuave" Color="#EEF0F3" />
+                    <SolidColorBrush x:Key="Borde" Color="#DFE3E8" />
+                    <SolidColorBrush x:Key="TextoSecundario" Color="#5E6A79" />
+                    <SolidColorBrush x:Key="Acento" Color="#2F6FDB" />
+                    <SolidColorBrush x:Key="AcentoSuave" Color="#E6EEFC" />
+                    <SolidColorBrush x:Key="Exito" Color="#1E8E3E" />
+                    <SolidColorBrush x:Key="Aviso" Color="#9A5B00" />
+                    <SolidColorBrush x:Key="AvisoSuave" Color="#FFF4DF" />
+                    <SolidColorBrush x:Key="Error" Color="#C62828" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="FondoApp" Color="#17191C" />
+                    <SolidColorBrush x:Key="FondoTarjeta" Color="#202327" />
+                    <SolidColorBrush x:Key="FondoSuave" Color="#2A2E33" />
+                    <SolidColorBrush x:Key="Borde" Color="#353A41" />
+                    <SolidColorBrush x:Key="TextoSecundario" Color="#A3ACB8" />
+                    <SolidColorBrush x:Key="Acento" Color="#6A9CF0" />
+                    <SolidColorBrush x:Key="AcentoSuave" Color="#22314A" />
+                    <SolidColorBrush x:Key="Exito" Color="#5CC27A" />
+                    <SolidColorBrush x:Key="Aviso" Color="#F0B45A" />
+                    <SolidColorBrush x:Key="AvisoSuave" Color="#3A2E1A" />
+                    <SolidColorBrush x:Key="Error" Color="#F07070" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
 
     <Application.Styles>
-        <FluentTheme />
+        <FluentTheme>
+            <FluentTheme.Palettes>
+                <ColorPaletteResources x:Key="Light" Accent="#2F6FDB" />
+                <ColorPaletteResources x:Key="Dark" Accent="#4F86E8" />
+            </FluentTheme.Palettes>
+        </FluentTheme>
+
+        <Style Selector="Border.tarjeta">
+            <Setter Property="Background" Value="{DynamicResource FondoTarjeta}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Borde}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="24" />
+        </Style>
+        <Style Selector="Border.aviso">
+            <Setter Property="Background" Value="{DynamicResource AvisoSuave}" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="12,10" />
+        </Style>
+        <Style Selector="Border.info">
+            <Setter Property="Background" Value="{DynamicResource AcentoSuave}" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="12,10" />
+        </Style>
+        <Style Selector="TextBlock.titulo">
+            <Setter Property="FontSize" Value="22" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="TextBlock.subtitulo">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="TextBlock.secundario">
+            <Setter Property="Foreground" Value="{DynamicResource TextoSecundario}" />
+        </Style>
+        <Style Selector="TextBlock.etiqueta">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource TextoSecundario}" />
+        </Style>
+        <Style Selector="TextBlock.error">
+            <Setter Property="Foreground" Value="{DynamicResource Error}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="Button.enlace">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Foreground" Value="{DynamicResource Acento}" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.enlace:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource Acento}" />
+        </Style>
+        <Style Selector="Button.grande">
+            <Setter Property="Padding" Value="22,10" />
+            <Setter Property="FontSize" Value="15" />
+        </Style>
+
+        <!-- Pasos del encabezado -->
+        <Style Selector="Border.paso">
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Padding" Value="12,5" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Border.paso TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextoSecundario}" />
+        </Style>
+        <Style Selector="Border.paso.hecho TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource Acento}" />
+        </Style>
+        <Style Selector="Border.paso.actual">
+            <Setter Property="Background" Value="{DynamicResource Acento}" />
+        </Style>
+        <Style Selector="Border.paso.actual TextBlock">
+            <Setter Property="Foreground" Value="White" />
+        </Style>
     </Application.Styles>
 </Application>

@@ -1,22 +1,43 @@
-﻿<Window xmlns="https://github.com/avaloniaui"
+<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:BackupTidy.App.ViewModels"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="BackupTidy.App.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Icon="/Assets/avalonia-logo.ico"
-        Title="BackupTidy">
+        Title="BackupTidy"
+        Width="1240" Height="800" MinWidth="980" MinHeight="620"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource FondoApp}">
 
-    <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
-        <vm:MainViewModel />
-    </Design.DataContext>
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Padding="28,14" Background="{DynamicResource FondoTarjeta}"
+                BorderBrush="{DynamicResource Borde}" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <TextBlock Text="BackupTidy" FontSize="20" FontWeight="Bold" />
+                    <TextBlock Text="Ordena los backups del celular sin borrar nada" Classes="secundario"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+                <ItemsControl Grid.Column="2" ItemsSource="{Binding Pasos}" VerticalAlignment="Center">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="4" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:PasoVista">
+                            <Border Classes="paso" Classes.actual="{Binding EsActual}" Classes.hecho="{Binding EsHecho}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="{Binding Numero}" FontWeight="Bold" />
+                                    <TextBlock Text="{Binding Nombre}" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Grid>
+        </Border>
 
-    <TextBlock Text="{Binding Greeting}"
-             HorizontalAlignment="Center"
-             VerticalAlignment="Center" />
-
+        <ContentControl Content="{Binding Pagina}" />
+    </DockPanel>
 </Window>

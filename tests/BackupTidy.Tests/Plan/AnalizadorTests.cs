@@ -39,6 +39,7 @@ public sealed class AnalizadorTests : IDisposable
         Assert.Equal(Destino("Fotos", "2019", "2019-03", "IMG_0001.JPG"), f.Destino);
         Assert.Equal((new DateTime(2019, 3, 15, 12, 12, 0), FuenteFecha.Exif), (f.Fecha!.Value, f.FuenteFecha!.Value));
         Assert.Equal("", f.Nota);
+        Assert.Null(f.Relacionado);
     }
 
     [Fact]
@@ -55,6 +56,7 @@ public sealed class AnalizadorTests : IDisposable
         Assert.Equal(CategoriaPlan.Duplicados, dup.Categoria);
         Assert.Equal(Destino("_duplicados", "iPhone2", "DCIM", "IMG_0001.JPG"), dup.Destino);
         Assert.Equal(@"Igual a: iPhone\DCIM\IMG_0001.JPG", dup.Nota);
+        Assert.Equal(origen[@"iPhone\DCIM\IMG_0001.JPG"], dup.Relacionado);
         Assert.NotNull(dup.Hash);
     }
 
@@ -68,6 +70,7 @@ public sealed class AnalizadorTests : IDisposable
         var plan = Analizar();
 
         Assert.Equal(Destino("_duplicados_conversiones", "DCIM", "IMG_0002.HEIC.jpg"), Fila(plan, @"DCIM\IMG_0002.HEIC.jpg").Destino);
+        Assert.Equal(origen[@"DCIM\IMG_0002.HEIC"], Fila(plan, @"DCIM\IMG_0002.HEIC.jpg").Relacionado);
         Assert.Equal(CategoriaPlan.Fotos, Fila(plan, @"DCIM\IMG_0003.HEIC.jpg").Categoria);
     }
 
@@ -169,6 +172,7 @@ public sealed class AnalizadorTests : IDisposable
 
         Assert.Equal(CategoriaPlan.Duplicados, f.Categoria);
         Assert.Equal("Ya existe en: " + organizado, f.Nota);
+        Assert.Equal(organizado, f.Relacionado);
     }
 
     [Fact]
@@ -183,6 +187,7 @@ public sealed class AnalizadorTests : IDisposable
 
         Assert.Equal((CategoriaPlan.Fotos, Destino("Fotos", "2019", "2019-03", "IMG_0005.HEIC")), (heic.Categoria, heic.Destino));
         Assert.Equal("Reemplaza JPG convertido: " + jpg, heic.Nota);
+        Assert.Equal((jpg, heic.Origen), (heic.Relacionado, reemplazado.Relacionado));
         Assert.Equal((jpg, Destino("_jpg_reemplazados", "Fotos", "2019", "2019-03", "IMG_0005.jpg")), (reemplazado.Origen, reemplazado.Destino));
     }
 
@@ -196,6 +201,7 @@ public sealed class AnalizadorTests : IDisposable
 
         Assert.Equal((CategoriaPlan.Duplicados, Destino("_duplicados_probables", "iPhone", "IMG_0006.JPG")), (f.Categoria, f.Destino));
         Assert.Equal("Mismo nombre y mes que: " + heic, f.Nota);
+        Assert.Equal(heic, f.Relacionado);
     }
 
     [Fact]

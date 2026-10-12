@@ -1,0 +1,61 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BackupTidy.App.ViewModels"
+             x:Class="BackupTidy.App.Views.CarpetasView"
+             x:DataType="vm:CarpetasViewModel">
+
+    <ScrollViewer>
+        <StackPanel MaxWidth="760" Margin="28,36" Spacing="20">
+            <StackPanel Spacing="6">
+                <TextBlock Classes="titulo" Text="Elige las carpetas" />
+                <TextBlock Classes="secundario" TextWrapping="Wrap"
+                           Text="Primero se analiza el backup y ves el plan completo. Nada se mueve hasta que lo confirmes." />
+            </StackPanel>
+
+            <Border Classes="tarjeta">
+                <StackPanel Spacing="22">
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="subtitulo" Text="Backup a organizar" />
+                        <TextBlock Classes="secundario" TextWrapping="Wrap"
+                                   Text="La carpeta donde descomprimiste o copiaste el backup del celular." />
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                            <TextBox Text="{Binding Origen}" PlaceholderText="Por ejemplo D:\05_archive\backup_celulares" />
+                            <Button Grid.Column="1" Content="Elegir…" Margin="8,0,0,0" Command="{Binding ElegirOrigenCommand}" />
+                        </Grid>
+                    </StackPanel>
+
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="subtitulo" Text="Carpeta organizada" />
+                        <TextBlock Classes="secundario" TextWrapping="Wrap"
+                                   Text="Donde quedan las fotos ordenadas por año y mes. Puede ser tu archivo organizado de siempre." />
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                            <TextBox Text="{Binding Destino}" PlaceholderText="Por ejemplo D:\05_archive\backup_celulares_organizado" />
+                            <Button Grid.Column="1" Content="Elegir…" Margin="8,0,0,0" Command="{Binding ElegirDestinoCommand}" />
+                        </Grid>
+                        <CheckBox IsChecked="{Binding CompararConDestino}" Margin="0,4,0,0">
+                            <TextBlock TextWrapping="Wrap"
+                                       Text="No volver a importar lo que ya está en la carpeta organizada (va a duplicados)" />
+                        </CheckBox>
+                    </StackPanel>
+
+                    <TextBlock Classes="error" Text="{Binding Error}" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    <TextBlock Classes="error" Text="{Binding ErrorAnalisis}"
+                               IsVisible="{Binding ErrorAnalisis, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Border Classes="info" VerticalAlignment="Center">
+                            <TextBlock TextWrapping="Wrap" Text="El análisis solo lee: no mueve ni modifica ningún archivo." />
+                        </Border>
+                        <Button Grid.Column="1" Classes="accent grande" Margin="16,0,0,0" Content="Analizar"
+                                Command="{Binding AnalizarCommand}" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                <TextBlock Classes="secundario" Text="¿Organizaste algo y quieres revertirlo?" />
+                <Button Classes="enlace" Content="Deshacer una organización anterior…" Command="{Binding DeshacerAnteriorCommand}" />
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -1,0 +1,84 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BackupTidy.App.ViewModels"
+             x:Class="BackupTidy.App.Views.ResultadoView"
+             x:DataType="vm:ResultadoViewModel">
+
+    <ScrollViewer>
+        <Border Classes="tarjeta" MaxWidth="720" Margin="28,36" VerticalAlignment="Center">
+            <StackPanel Spacing="20">
+                <StackPanel Spacing="6">
+                    <TextBlock Classes="titulo" Text="{Binding Titulo}" />
+                    <TextBlock Classes="secundario" Text="{Binding Detalle}" TextWrapping="Wrap" />
+                </StackPanel>
+
+                <!-- Mientras trabaja -->
+                <StackPanel Spacing="12" IsVisible="{Binding Trabajando}">
+                    <ProgressBar Height="8" Minimum="0" Maximum="100" Value="{Binding Porcentaje}" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Classes="secundario" TextWrapping="Wrap" VerticalAlignment="Center"
+                                   Text="Detener es seguro: termina el archivo en curso y lo movido se puede deshacer." />
+                        <Button Grid.Column="1" Margin="16,0,0,0" Content="Detener" Command="{Binding DetenerCommand}" />
+                    </Grid>
+                </StackPanel>
+
+                <!-- Resultado -->
+                <ItemsControl ItemsSource="{Binding Cifras}" IsVisible="{Binding !Trabajando}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Rows="1" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:Cifra">
+                            <Border Background="{DynamicResource FondoSuave}" CornerRadius="8" Padding="14,12" Margin="0,0,8,0"
+                                    ToolTip.Tip="{Binding Ayuda}">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="{Binding Valor}" FontSize="24" FontWeight="SemiBold" />
+                                    <TextBlock Classes="secundario" Text="{Binding Nombre}" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Border Classes="aviso" IsVisible="{Binding HayAvisos}">
+                    <ScrollViewer MaxHeight="160">
+                        <ItemsControl ItemsSource="{Binding Avisos}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="x:String">
+                                    <TextBlock Text="{Binding}" TextWrapping="Wrap" Foreground="{DynamicResource Aviso}" Margin="0,2" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
+
+                <StackPanel Spacing="2" IsVisible="{Binding RutaRegistro, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <TextBlock Classes="etiqueta" Text="REGISTRO DE MOVIMIENTOS" />
+                    <TextBlock Classes="secundario" Text="{Binding RutaRegistro}" TextWrapping="Wrap" />
+                </StackPanel>
+
+                <!-- Acciones -->
+                <Panel IsVisible="{Binding !Trabajando}">
+                    <Grid ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding !ConfirmandoDeshacer}">
+                        <Button Content="Deshacer" Command="{Binding PedirDeshacerCommand}" IsVisible="{Binding PuedeDeshacer}" />
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+                            <Button Content="Abrir carpeta organizada" Command="{Binding AbrirDestinoCommand}"
+                                    IsVisible="{Binding Destino, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                            <Button Classes="accent" Content="Organizar otro backup" Command="{Binding NuevoAnalisisCommand}" />
+                        </StackPanel>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding ConfirmandoDeshacer}">
+                        <TextBlock TextWrapping="Wrap" VerticalAlignment="Center"
+                                   Text="¿Devolver cada archivo a donde estaba antes de organizar?" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="16,0,0,0">
+                            <Button Content="No" Command="{Binding CancelarDeshacerCommand}" />
+                            <Button Classes="accent" Content="Sí, deshacer" Command="{Binding ConfirmarDeshacerCommand}" />
+                        </StackPanel>
+                    </Grid>
+                </Panel>
+            </StackPanel>
+        </Border>
+    </ScrollViewer>
+</UserControl>

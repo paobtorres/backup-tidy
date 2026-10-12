@@ -5,11 +5,12 @@ namespace BackupTidy.Core.Plan;
 
 /// <summary>
 /// Guarda y lee el plan en el formato del script de referencia, para revisarlo en Excel y poder
-/// comparar ambos: Categoria;Fecha;FechaFuente;TamanoMB;Bytes;Origen;Destino;Hash;Nota.
+/// comparar ambos: Categoria;Fecha;FechaFuente;TamanoMB;Bytes;Origen;Destino;Hash;Nota, mas Relacionado al final
+/// (opcional al leer: los planes del script no la tienen).
 /// </summary>
 public static class PlanCsv
 {
-    static readonly string[] Columnas = ["Categoria", "Fecha", "FechaFuente", "TamanoMB", "Bytes", "Origen", "Destino", "Hash", "Nota"];
+    static readonly string[] Columnas = ["Categoria", "Fecha", "FechaFuente", "TamanoMB", "Bytes", "Origen", "Destino", "Hash", "Nota", "Relacionado"];
     const string FormatoFecha = "yyyy-MM-dd HH:mm";
 
     static readonly Dictionary<FuenteFecha, string> TextoFuente = new()
@@ -33,7 +34,7 @@ public static class PlanCsv
                 // Solo informativo: con la cultura del usuario para que Excel lo tome como numero
                 Math.Round(f.Bytes / 1048576.0, 2).ToString(CultureInfo.CurrentCulture),
                 f.Bytes.ToString(CultureInfo.InvariantCulture),
-                f.Origen, f.Destino, f.Hash, f.Nota);
+                f.Origen, f.Destino, f.Hash, f.Nota, f.Relacionado);
     }
 
     public static List<FilaPlan> Leer(string ruta) => Csv.Leer(ruta).Select(r =>
@@ -48,6 +49,7 @@ public static class PlanCsv
             fecha.Length > 0 ? DateTime.ParseExact(fecha, FormatoFecha, CultureInfo.InvariantCulture) : null,
             fuente.Length > 0 ? TextoFuente.Single(kv => kv.Value.Equals(fuente, StringComparison.OrdinalIgnoreCase)).Key : null,
             r["Hash"] is { Length: > 0 } hash ? hash : null,
-            r["Nota"]);
+            r["Nota"],
+            r.GetValueOrDefault("Relacionado") is { Length: > 0 } relacionado ? relacionado : null);
     }).ToList();
 }
