@@ -24,6 +24,18 @@ static class ArchivosDePrueba
         return [0xFF, 0xD8, 0xFF, 0xE1, (byte)(largo >> 8), (byte)largo, .. "Exif\0\0"u8, .. tiff, 0xFF, 0xD9];
     }
 
+    /// <summary>JPG con un segmento XMP (APP1) con xmp:CreateDate, como los stickers y fondos editados.</summary>
+    public static byte[] JpegConXmp(string fechaCreacion)
+    {
+        var xmp = Encoding.UTF8.GetBytes(
+            "<x:xmpmeta xmlns:x=\"adobe:ns:meta/\"><rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">" +
+            $"<rdf:Description rdf:about=\"\" xmlns:xmp=\"http://ns.adobe.com/xap/1.0/\" xmp:CreateDate=\"{fechaCreacion}\"/>" +
+            "</rdf:RDF></x:xmpmeta>");
+        byte[] cuerpo = [.. "http://ns.adobe.com/xap/1.0/\0"u8, .. xmp];
+        var largo = 2 + cuerpo.Length;
+        return [0xFF, 0xD8, 0xFF, 0xE1, (byte)(largo >> 8), (byte)largo, .. cuerpo, 0xFF, 0xD9];
+    }
+
     /// <summary>JPG sin EXIF.</summary>
     public static byte[] JpegSinExif() => [0xFF, 0xD8, 0xFF, 0xD9];
 

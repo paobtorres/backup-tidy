@@ -34,6 +34,18 @@ public class ReglasFechaTests
     public void ParsearExif(string? texto, string? esperado) =>
         Assert.Equal(esperado is null ? null : DateTime.Parse(esperado), ReglasFecha.ParsearExif(texto));
 
+    [Theory]
+    [InlineData("2016-11-17T13:49:09+01:00", "2016-11-17 13:49:09")]
+    [InlineData("2021-12-07T12:37:32-08:00", "2021-12-07 12:37:32")]
+    [InlineData("2017-11-04T02:49:44Z", "2017-11-04 02:49:44")]
+    [InlineData("2016-11-17T13:49:09", "2016-11-17 13:49:09")]
+    [InlineData("2016-11-17", "2016-11-17 00:00:00")]
+    [InlineData("no es fecha", null)]
+    [InlineData("", null)]
+    [InlineData(null, null)]
+    public void ParsearXmp(string? texto, string? esperado) =>
+        Assert.Equal(esperado is null ? null : DateTime.Parse(esperado), ReglasFecha.ParsearXmp(texto));
+
     [Fact]
     public void EsValida_acepta_desde_2000_hasta_manana()
     {

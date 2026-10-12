@@ -60,6 +60,16 @@ public class LectorMetadatosTests
     }
 
     [Fact]
+    public void Lee_la_fecha_xmp_tal_como_esta_escrita()
+    {
+        // Caso real: sticker de Message Attachments sin EXIF, con la fecha solo en XMP
+        var m = Leer(ArchivosDePrueba.JpegConXmp("2016-11-17T13:49:09+01:00"));
+
+        Assert.Empty(m.FechasExif);
+        Assert.Equal([new DateTime(2016, 11, 17, 13, 49, 9)], m.FechasContenedor);
+    }
+
+    [Fact]
     public void Detecta_el_formato_por_el_contenido()
     {
         Assert.Equal(".jpg", Leer(ArchivosDePrueba.Jpeg(marca: "Apple")).ExtensionContenido);

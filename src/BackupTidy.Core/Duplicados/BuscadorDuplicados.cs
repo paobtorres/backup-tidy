@@ -66,7 +66,7 @@ public static class BuscadorDuplicados
             var nuevos = grupo.Where(a => !a.EsReferencia).ToList();
             var referencia = grupo.Where(a => a.EsReferencia)
                                   .OrderBy(a => EstaEnRevision(a.RutaRelativa) ? 1 : 0)
-                                  .ThenBy(a => a.Ruta, StringComparer.OrdinalIgnoreCase)
+                                  .ThenBy(a => a.Ruta, StringComparer.InvariantCultureIgnoreCase)
                                   .FirstOrDefault();
             if (referencia is not null)
             {
@@ -78,7 +78,8 @@ public static class BuscadorDuplicados
                               .ThenBy(a => Clasificador.EstaEnMensajes(a.RutaRelativa) ? 1 : 0)
                               .ThenBy(a => Path.GetFileName(a.RutaRelativa).Length)
                               .ThenBy(a => a.RutaRelativa.Length)
-                              .ThenBy(a => a.RutaRelativa, StringComparer.OrdinalIgnoreCase)
+                              // Orden alfabetico como el Explorador y el script ('_' antes que los digitos)
+                              .ThenBy(a => a.RutaRelativa, StringComparer.InvariantCultureIgnoreCase)
                               .ToList();
             foreach (var a in orden.Skip(1)) duplicados[a.Ruta] = new(MotivoDuplicado.IgualA, orden[0].RutaRelativa);
         }

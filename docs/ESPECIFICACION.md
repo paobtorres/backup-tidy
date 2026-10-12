@@ -63,7 +63,9 @@ Sin fecha (la de modificacion es la de la exportacion). Duplicados -> `Documento
 Orden de prioridad:
 
 1. **EXIF DateTimeOriginal (0x9003)**, luego 0x9004, luego 0x0132. Formato `yyyy:MM:dd HH:mm:ss`, hora local.
-2. **Metadatos del contenedor**: HEIC/DNG/PNG -> DateTaken; videos -> fecha de creacion del QuickTime.
+2. **Metadatos del contenedor**: videos -> `com.apple.quicktime.creationdate` o cabecera mvhd (UTC);
+   luego XMP (`exif:DateTimeOriginal`, `photoshop:DateCreated`, `xmp:CreateDate`), donde PNG y webp
+   editados (capturas, stickers, fondos) suelen tener su unica fecha.
    **Ojo:** las propiedades de Windows (System.Photo.DateTaken / System.Media.DateEncoded)
    vienen en **UTC** -> convertir a local (se verifico: EXIF 12:12 = Windows 15:12 en UTC-3).
 3. **Fecha en el nombre**: `IMG-20190315-WA0001`, `Screenshot_2019-03-15`, `20190315_123456`
@@ -109,6 +111,18 @@ FoneLab puede exportar HEIC convertidos a JPG (no son identicos por hash). Clave
 - Camera Roll de iPhone 14 Pro exportado sin HEIC -> FoneLab tenia activada la conversion.
 - 110 de 7.074 "videos" (.MOV / .MP4, 160 MB) eran en realidad JPEG: quedaban en Videos y LivePhotos
   y la fecha salia de la modificacion. Muestra en `backup_celulares_organizado\_revision_jpeg_con_extension_de_video`.
+- Fotos de Sony Xperia (C1904): GDI no ve la marca en el EXIF y el script las mandaba a Guardadas;
+  MetadataExtractor si la lee ("Sony").
+- Exportacion de FoneLab del iPhone 14 Pro: la fecha de modificacion de todo es la de la exportacion.
+  `WhatsApp Attachments` nombra los archivos `D_M_AAAA HH_MM` (`18_9_2025 18_06.jpg`): 15.333 archivos
+  con la fecha del mensaje en el nombre que la regla `AAAAMMDD` no reconoce.
+
+## Validacion contra el script (muestra de 84.327 archivos)
+
+- Mismo plan en el 98,8 % de las filas; con `CompararCon` el 99,7 %, y las 31.293 decisiones de
+  duplicados identicas. Todas las diferencias revisadas favorecen al motor (marca Sony, fechas
+  EXIF/XMP de PNG que Windows no expone). Motor: 1,7 min; script: 9,6 min.
+- Ejecutar + deshacer sobre 2.456 archivos reales: inventario (ruta, tamano, fecha, MD5) identico.
 - Un restore del iPhone reinicio el carrete: un backup nuevo NO contiene necesariamente las fotos viejas.
 - Backup de iTunes: un solo backup por dispositivo (carpeta = UDID); el nuevo reemplaza al anterior.
 - `Manifest.db` (SQLite) indica que archivo es cada foto en backups **no cifrados** -> fase 2:

@@ -71,6 +71,13 @@ public static class ReglasFecha
     }
 
     /// <summary>
+    /// Fecha XMP (<c>2016-11-17T13:49:09+01:00</c>, con o sin zona y hora) tal como esta escrita: la hora local
+    /// de quien la creo, igual que en EXIF. Null si no es una fecha.
+    /// </summary>
+    public static DateTime? ParsearXmp(string? texto) =>
+        DateTimeOffset.TryParse(texto?.Trim(), CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var d) ? d.DateTime : null;
+
+    /// <summary>
     /// Elige la fecha con la prioridad de la especificacion: EXIF, metadatos del contenedor, nombre y,
     /// como ultimo recurso, la fecha de modificacion (marcada como dudosa si la carpeta fue restaurada).
     /// </summary>

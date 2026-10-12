@@ -67,6 +67,16 @@ public class BuscadorDuplicadosTests
     }
 
     [Fact]
+    public void El_desempate_alfabetico_es_como_el_del_explorador()
+    {
+        // Caso real de WhatsApp Attachments: mismo largo y misma carpeta; '_' va antes que los digitos
+        var r = Buscar(Nuevo(@"WhatsApp Attachments\17_9_2025 14_00.jpg", "XXXX"),
+                       Nuevo(@"WhatsApp Attachments\1_10_2025 10_00.jpg", "XXXX"));
+
+        Assert.Equal(@"WhatsApp Attachments\1_10_2025 10_00.jpg", r.Duplicados.Values.Single().Original);
+    }
+
+    [Fact]
     public void La_vista_previa_convertida_nunca_es_la_que_se_conserva()
     {
         var r = Buscar(Nuevo("IMG_1.HEIC.jpg", "XXXX"), Nuevo(@"carpeta\IMG_1_nombre_mas_largo.jpg", "XXXX"));

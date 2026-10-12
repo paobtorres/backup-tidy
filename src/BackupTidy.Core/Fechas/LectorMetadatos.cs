@@ -1,6 +1,7 @@
 using MetadataExtractor;
 using MetadataExtractor.Formats.Exif;
 using MetadataExtractor.Formats.QuickTime;
+using MetadataExtractor.Formats.Xmp;
 using MetadataExtractor.Util;
 
 namespace BackupTidy.Core.Fechas;
@@ -11,6 +12,9 @@ namespace BackupTidy.Core.Fechas;
 /// </summary>
 public static class LectorMetadatos
 {
+    // En orden de preferencia; solo propiedades de primer nivel (no las de documentos incrustados)
+    static readonly string[] ClavesXmp = ["exif:DateTimeOriginal", "photoshop:DateCreated", "xmp:CreateDate"];
+
     public static MetadatosMedia Leer(string ruta)
     {
         try
@@ -59,6 +63,14 @@ public static class LectorMetadatos
         foreach (var d in directorios.OfType<QuickTimeMovieHeaderDirectory>())
             if (d.TryGetDateTime(QuickTimeMovieHeaderDirectory.TagCreated, out var fecha))
                 fechasContenedor.Add(DateTime.SpecifyKind(fecha, DateTimeKind.Utc).ToLocalTime());
+        // XMP: PNG y webp editados (stickers, fondos, adjuntos) suelen tener la fecha solo aca
+        foreach (var d in directorios.OfType<XmpDirectory>())
+        {
+            var propiedades = d.GetXmpProperties();
+            foreach (var clave in ClavesXmp)
+                if (propiedades.TryGetValue(clave, out var valor) && ReglasFecha.ParsearXmp(valor) is DateTime fecha)
+                    fechasContenedor.Add(fecha);
+        }
 
         var marca = ifd0.Select(d => d.GetString(ExifDirectoryBase.TagMake)?.Trim('\0', ' '))
                         .FirstOrDefault(m => !string.IsNullOrEmpty(m));
