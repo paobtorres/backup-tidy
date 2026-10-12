@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/BackupTidy.App/BackupTidy.App.csproj" />
+    <Project Path="src/BackupTidy.Cli/BackupTidy.Cli.csproj" />
     <Project Path="src/BackupTidy.Core/BackupTidy.Core.csproj" />
   </Folder>
   <Folder Name="/tests/">
