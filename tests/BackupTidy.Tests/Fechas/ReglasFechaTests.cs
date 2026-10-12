@@ -23,6 +23,28 @@ public class ReglasFechaTests
         Assert.Equal(esperado is null ? null : DateTime.Parse(esperado), ReglasFecha.FechaDeNombre(nombre));
 
     [Theory]
+    // Nombres reales de WhatsApp Attachments (exportacion de FoneLab): dia_mes_anio hora_minuto
+    [InlineData("18_9_2025 18_06.jpg", "2025-09-18 18:06")]
+    [InlineData("1_10_2025 10_00.jpg", "2025-10-01 10:00")]
+    [InlineData("14_4_2026 20_31 (3).jpg", "2026-04-14 20:31")]
+    [InlineData("26_4_2026 10_22 (2).mov", "2026-04-26 10:22")]
+    [InlineData("23_1_2022 18_08.webp", "2022-01-23 18:08")]
+    // El formato estandar sigue teniendo prioridad
+    [InlineData("IMG-20190315-WA0001.jpg", "2019-03-15 00:00")]
+    // Imposibles o incompletos
+    [InlineData("31_2_2022 18_08.jpg", null)]
+    [InlineData("12_13_2022 18_08.jpg", null)]
+    [InlineData("12_10_2022 25_08.jpg", null)]
+    [InlineData("18_9_2025.jpg", null)]
+    [InlineData("9494.png", null)]
+    public void FechaDeNombre_estilo_whatsapp(string nombre, string? esperado) =>
+        Assert.Equal(esperado is null ? null : DateTime.Parse(esperado), ReglasFecha.FechaDeNombre(nombre, estiloWhatsApp: true));
+
+    [Fact]
+    public void FechaDeNombre_estilo_whatsapp_solo_si_se_pide() =>
+        Assert.Null(ReglasFecha.FechaDeNombre("18_9_2025 18_06.jpg"));
+
+    [Theory]
     [InlineData("2019:03:15 12:12:00", "2019-03-15 12:12:00")]
     [InlineData("2019:03:15 12:12:00\0", "2019-03-15 12:12:00")]
     [InlineData(" 2019-03-15 12:12:00 ", "2019-03-15 12:12:00")]

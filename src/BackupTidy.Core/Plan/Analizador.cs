@@ -124,7 +124,8 @@ public static class Analizador
             }
 
             var meta = metadatos[f.FullName];
-            var fecha = ReglasFecha.Resolver(meta, f.Name, f.LastWriteTime, carpetasDudosas.Contains(f.DirectoryName!), ahora);
+            var fecha = ReglasFecha.Resolver(meta, f.Name, f.LastWriteTime, carpetasDudosas.Contains(f.DirectoryName!), ahora,
+                                             enWhatsApp: Clasificador.EstaEnWhatsApp(rel));
             var categoriaMedia = Clasificador.CategoriaDe(new DatosMedia(rel, f.Length, meta.TieneMarcaCamara,
                                                                           fotosLive.Contains(Clasificador.ClaveLive(rel)), meta.ExtensionContenido));
             var cat = FilaPlan.CategoriaDeMedia(categoriaMedia);

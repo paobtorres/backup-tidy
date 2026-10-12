@@ -45,19 +45,34 @@ public static class ReglasFecha
     static readonly Regex RxFechaNombre = new(
         @"(?<!\d)((?:19|20)\d{2})[-_.]?(0[1-9]|1[0-2])[-_.]?(0[1-9]|[12]\d|3[01])(?!\d)", RegexOptions.CultureInvariant);
 
+    // Exportacion de FoneLab de WhatsApp Attachments: "18_9_2025 18_06.jpg" = dia_mes_anio hora_minuto del mensaje
+    static readonly Regex RxFechaWhatsApp = new(
+        @"(?<!\d)(\d{1,2})_(\d{1,2})_((?:19|20)\d{2}) (\d{1,2})_(\d{2})(?!\d)", RegexOptions.CultureInvariant);
+
     static readonly string[] FormatosExif = ["yyyy:MM:dd HH:mm:ss", "yyyy-MM-dd HH:mm:ss", "yyyy:MM:dd HH:mm"];
 
     /// <summary>Rango aceptado: desde 2000-01-01 hasta manana (tolera relojes y zonas horarias adelantadas).</summary>
     public static bool EsValida(DateTime fecha, DateTime ahora) => fecha >= Minima && fecha <= ahora.AddDays(1);
 
-    /// <summary>Primera fecha AAAAMMDD real que aparece en el nombre (sin hora), o null.</summary>
-    public static DateTime? FechaDeNombre(string nombreArchivo)
+    /// <summary>
+    /// Primera fecha AAAAMMDD real que aparece en el nombre (sin hora), o null. Con <paramref name="estiloWhatsApp"/>
+    /// tambien reconoce <c>D_M_AAAA HH_MM</c> (con hora), que solo es fiable en carpetas de WhatsApp.
+    /// </summary>
+    public static DateTime? FechaDeNombre(string nombreArchivo, bool estiloWhatsApp = false)
     {
         for (var m = RxFechaNombre.Match(nombreArchivo); m.Success; m = m.NextMatch())
         {
             int anio = int.Parse(m.Groups[1].ValueSpan), mes = int.Parse(m.Groups[2].ValueSpan), dia = int.Parse(m.Groups[3].ValueSpan);
             // La regex acepta 2019-02-31: se descarta y se sigue buscando
             if (dia <= DateTime.DaysInMonth(anio, mes)) return new DateTime(anio, mes, dia);
+        }
+        if (!estiloWhatsApp) return null;
+        for (var m = RxFechaWhatsApp.Match(nombreArchivo); m.Success; m = m.NextMatch())
+        {
+            int dia = int.Parse(m.Groups[1].ValueSpan), mes = int.Parse(m.Groups[2].ValueSpan), anio = int.Parse(m.Groups[3].ValueSpan),
+                hora = int.Parse(m.Groups[4].ValueSpan), minuto = int.Parse(m.Groups[5].ValueSpan);
+            if (mes is >= 1 and <= 12 && dia >= 1 && dia <= DateTime.DaysInMonth(anio, mes) && hora < 24 && minuto < 60)
+                return new DateTime(anio, mes, dia, hora, minuto, 0);
         }
         return null;
     }
@@ -81,14 +96,15 @@ public static class ReglasFecha
     /// Elige la fecha con la prioridad de la especificacion: EXIF, metadatos del contenedor, nombre y,
     /// como ultimo recurso, la fecha de modificacion (marcada como dudosa si la carpeta fue restaurada).
     /// </summary>
+    /// <param name="enWhatsApp">El archivo esta en una carpeta de WhatsApp (ver <see cref="FechaDeNombre"/>).</param>
     public static FechaArchivo Resolver(MetadatosMedia metadatos, string nombreArchivo, DateTime fechaModificacion,
-                                        bool carpetaDudosa, DateTime ahora)
+                                        bool carpetaDudosa, DateTime ahora, bool enWhatsApp = false)
     {
         foreach (var d in metadatos.FechasExif)
             if (EsValida(d, ahora)) return new(d, FuenteFecha.Exif);
         foreach (var d in metadatos.FechasContenedor)
             if (EsValida(d, ahora)) return new(d, FuenteFecha.Metadatos);
-        if (FechaDeNombre(nombreArchivo) is DateTime n && EsValida(n, ahora)) return new(n, FuenteFecha.Nombre);
+        if (FechaDeNombre(nombreArchivo, enWhatsApp) is DateTime n && EsValida(n, ahora)) return new(n, FuenteFecha.Nombre);
         return new(fechaModificacion, carpetaDudosa ? FuenteFecha.ArchivoDudoso : FuenteFecha.Archivo);
     }
 

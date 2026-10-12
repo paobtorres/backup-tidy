@@ -137,6 +137,9 @@ public static class Clasificador
     public static bool EstaEnMensajes(string rutaRelativa) =>
         CarpetasDe(rutaRelativa).Any(c => EsCarpetaMensajes(c) || EsCarpetaWhatsApp(c));
 
+    /// <summary>Esta en una carpeta de WhatsApp (WhatsApp, WhatsApp Images, WhatsApp Attachments...).</summary>
+    public static bool EstaEnWhatsApp(string rutaRelativa) => CarpetasDe(rutaRelativa).Any(EsCarpetaWhatsApp);
+
     static bool EsCarpetaWhatsApp(string carpeta) => carpeta.StartsWith("WhatsApp", StringComparison.OrdinalIgnoreCase);
 
     static bool EsCarpetaMensajes(string carpeta) =>

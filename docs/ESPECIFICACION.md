@@ -70,6 +70,7 @@ Orden de prioridad:
    vienen en **UTC** -> convertir a local (se verifico: EXIF 12:12 = Windows 15:12 en UTC-3).
 3. **Fecha en el nombre**: `IMG-20190315-WA0001`, `Screenshot_2019-03-15`, `20190315_123456`
    (regex `(?<!\d)((?:19|20)\d{2})[-_.]?(0[1-9]|1[0-2])[-_.]?(0[1-9]|[12]\d|3[01])(?!\d)`).
+   Solo en carpetas de WhatsApp, ademas `D_M_AAAA HH_MM` (`18_9_2025 18_06.jpg`, con hora).
 4. **Fecha de modificacion** como ultimo recurso — **pero** en carpetas restauradas es la fecha
    del restore. Regla: si una carpeta tiene >= 20 archivos y >= 50 % comparten el mismo dia de
    modificacion, esa fecha es *dudosa* -> destino `<Categoria>\_fecha_dudosa\AAAA\AAAA-MM`.
@@ -115,7 +116,8 @@ FoneLab puede exportar HEIC convertidos a JPG (no son identicos por hash). Clave
   MetadataExtractor si la lee ("Sony").
 - Exportacion de FoneLab del iPhone 14 Pro: la fecha de modificacion de todo es la de la exportacion.
   `WhatsApp Attachments` nombra los archivos `D_M_AAAA HH_MM` (`18_9_2025 18_06.jpg`): 15.333 archivos
-  con la fecha del mensaje en el nombre que la regla `AAAAMMDD` no reconoce.
+  con la fecha del mensaje en el nombre que la regla `AAAAMMDD` no reconoce. Con la regla de WhatsApp,
+  15.341 de 15.437 salen de `_fecha_dudosa`.
 
 ## Validacion contra el script (muestra de 84.327 archivos)
 

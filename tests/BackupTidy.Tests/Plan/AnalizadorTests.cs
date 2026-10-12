@@ -100,6 +100,23 @@ public sealed class AnalizadorTests : IDisposable
     }
 
     [Fact]
+    public void Whatsapp_attachments_usa_dia_mes_anio_del_nombre_aunque_la_carpeta_sea_dudosa()
+    {
+        // Caso real del iPhone 14 Pro: todo con la fecha de la exportacion
+        for (var i = 0; i < 20; i++)
+            origen.Crear($@"Backup\WhatsApp Attachments\{i + 1}_9_2025 18_06.jpg", [0xFF, 0xD8, 0xFF, 0xD9, (byte)i], Restore);
+        origen.Crear(@"Backup\Otros\18_9_2025 18_06.jpg", [0xFF, 0xD8, 0xFF, 0xD9, 0xAA], Restore);
+
+        var plan = Analizar();
+        var whatsapp = Fila(plan, @"Backup\WhatsApp Attachments\18_9_2025 18_06.jpg");
+        var otro = Fila(plan, @"Backup\Otros\18_9_2025 18_06.jpg");
+
+        Assert.Equal((new DateTime(2025, 9, 18, 18, 6, 0), FuenteFecha.Nombre), (whatsapp.Fecha!.Value, whatsapp.FuenteFecha!.Value));
+        Assert.Equal(Destino("WhatsApp", "2025", "2025-09", "18_9_2025 18_06.jpg"), whatsapp.Destino);
+        Assert.Equal(FuenteFecha.Archivo, otro.FuenteFecha);   // fuera de WhatsApp no se interpreta
+    }
+
+    [Fact]
     public void Carpeta_restaurada_va_a_fecha_dudosa()
     {
         for (var i = 0; i < 20; i++)
