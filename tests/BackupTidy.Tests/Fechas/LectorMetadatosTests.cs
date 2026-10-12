@@ -60,6 +60,15 @@ public class LectorMetadatosTests
     }
 
     [Fact]
+    public void Detecta_el_formato_por_el_contenido()
+    {
+        Assert.Equal(".jpg", Leer(ArchivosDePrueba.Jpeg(marca: "Apple")).ExtensionContenido);
+        Assert.Equal(".jpg", Leer(ArchivosDePrueba.JpegSinExif()).ExtensionContenido);
+        Assert.Equal(".mov", Leer(ArchivosDePrueba.Mov(new DateTime(2019, 3, 15))).ExtensionContenido);
+        Assert.Null(Leer("no es una imagen"u8.ToArray()).ExtensionContenido);
+    }
+
+    [Fact]
     public void Archivo_que_no_es_imagen_ni_video() =>
         Assert.Equal(MetadatosMediaVacio(), Resumen(Leer("no es una imagen"u8.ToArray())));
 

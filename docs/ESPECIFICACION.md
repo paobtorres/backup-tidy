@@ -49,6 +49,10 @@ Origen (backup exportado) ──► Analisis ──► Plan ──► Revision �
 
 Destino: `<Categoria>\<AAAA>\<AAAA-MM>\<nombre>`.
 
+**Contenido vs. extension:** el tipo real se detecta por los primeros bytes. Si contradice a la extension
+(foto <-> video, p. ej. un JPEG llamado `.MOV`), se clasifica por el contenido, **sin cambiar el nombre**,
+con la nota "Es JPG con extension .MOV". Mismo tipo en otro formato (DNG leido como TIFF) no cuenta.
+
 ### Documentos
 
 `Documentos\PDF | Office (doc docx xls xlsx ppt pptx pbix odt ods odp rtf) | Comprimidos (zip rar 7z gz tar) | Otros`.
@@ -77,7 +81,8 @@ Rango valido: 2000-01-01 .. hoy+1 dia.
 - Copia a conservar dentro del origen: no convertida (`.HEIC.jpg`) > fuera de Mensajes >
   nombre mas corto > ruta mas corta.
 - Si ya existe en el archivo organizado: el nuevo va a `_duplicados` ("Ya existe en: ...").
-  Preferir como referencia la copia que no esta en `_duplicados`.
+  Preferir como referencia la copia que no esta en una carpeta de revision
+  (`_duplicados*`, `_jpg_reemplazados`, `_revision*`).
 
 ### Misma foto en otro formato
 
@@ -102,6 +107,8 @@ FoneLab puede exportar HEIC convertidos a JPG (no son identicos por hash). Clave
 - 4 backups del mismo iPhone solapados casi al 100 % -> 48.000 duplicados, 177 GB.
 - Un `.zip` de 17,7 GB era copia exacta de una carpeta ya importada (verificado entrada por entrada).
 - Camera Roll de iPhone 14 Pro exportado sin HEIC -> FoneLab tenia activada la conversion.
+- 110 de 7.074 "videos" (.MOV / .MP4, 160 MB) eran en realidad JPEG: quedaban en Videos y LivePhotos
+  y la fecha salia de la modificacion. Muestra en `backup_celulares_organizado\_revision_jpeg_con_extension_de_video`.
 - Un restore del iPhone reinicio el carrete: un backup nuevo NO contiene necesariamente las fotos viejas.
 - Backup de iTunes: un solo backup por dispositivo (carpeta = UDID); el nuevo reemplaza al anterior.
 - `Manifest.db` (SQLite) indica que archivo es cada foto en backups **no cifrados** -> fase 2:

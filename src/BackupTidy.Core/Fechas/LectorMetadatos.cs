@@ -1,6 +1,7 @@
 using MetadataExtractor;
 using MetadataExtractor.Formats.Exif;
 using MetadataExtractor.Formats.QuickTime;
+using MetadataExtractor.Util;
 
 namespace BackupTidy.Core.Fechas;
 
@@ -25,15 +26,20 @@ public static class LectorMetadatos
 
     public static MetadatosMedia Leer(Stream contenido)
     {
+        // El formato se detecta aparte para conocerlo aunque los metadatos esten danados
+        string? extensionContenido = null;
         IReadOnlyList<MetadataExtractor.Directory> directorios;
         try
         {
+            var formato = FileTypeDetector.DetectFileType(contenido);
+            if (formato.GetCommonExtension() is string ext) extensionContenido = "." + ext;
+            contenido.Position = 0;
             directorios = ImageMetadataReader.ReadMetadata(contenido);
         }
         catch (Exception)
         {
             // Formato desconocido o archivo danado: en backups de 170.000 archivos siempre hay alguno
-            return MetadatosMedia.Vacio;
+            return MetadatosMedia.Vacio with { ExtensionContenido = extensionContenido };
         }
 
         var subIfd = directorios.OfType<ExifSubIfdDirectory>().ToList();
@@ -57,7 +63,7 @@ public static class LectorMetadatos
         var marca = ifd0.Select(d => d.GetString(ExifDirectoryBase.TagMake)?.Trim('\0', ' '))
                         .FirstOrDefault(m => !string.IsNullOrEmpty(m));
 
-        return new MetadatosMedia(fechasExif, fechasContenedor, marca);
+        return new MetadatosMedia(fechasExif, fechasContenedor, marca, extensionContenido);
     }
 
     static void AgregarExif(List<DateTime> fechas, IEnumerable<ExifDirectoryBase> directorios, int etiqueta)

@@ -67,7 +67,8 @@ public static class Clasificador
     /// </summary>
     public static CategoriaMedia CategoriaDe(DatosMedia media)
     {
-        var tipo = TipoDe(media.RutaRelativa);
+        var ext = ExtensionEfectiva(media.RutaRelativa, media.ExtensionContenido);
+        var tipo = TipoDe(ext);
         if (tipo is not (TipoArchivo.Foto or TipoArchivo.Video))
             throw new ArgumentException($"No es foto ni video: {media.RutaRelativa}", nameof(media));
 
@@ -85,11 +86,31 @@ public static class Clasificador
 
         if (!media.TieneMarcaCamara)
         {
-            var ext = Path.GetExtension(nombre);
             if (ext.Equals(".png", StringComparison.OrdinalIgnoreCase)) return CategoriaMedia.Capturas;
             if (ExtGuardadas.Contains(ext)) return CategoriaMedia.Guardadas;
         }
         return CategoriaMedia.Fotos;
+    }
+
+    /// <summary>
+    /// Extension con la que se clasifica: la del nombre, salvo que el contenido sea de otro tipo
+    /// (por ejemplo un JPEG guardado como <c>.MOV</c>: se trata como foto). El archivo conserva su nombre.
+    /// </summary>
+    public static string ExtensionEfectiva(string ruta, string? extensionContenido) =>
+        ContenidoNoCoincide(ruta, extensionContenido) ? extensionContenido! : Path.GetExtension(NombreDe(ruta));
+
+    /// <summary>Nota para el plan si el contenido es de otro tipo que la extension; si no, null.</summary>
+    public static string? NotaContenido(string ruta, string? extensionContenido) =>
+        ContenidoNoCoincide(ruta, extensionContenido)
+            ? $"Es {extensionContenido![1..].ToUpperInvariant()} con extension {Path.GetExtension(NombreDe(ruta))}"
+            : null;
+
+    // Solo importa el cruce foto <-> video: un .dng que el detector ve como TIFF sigue siendo una foto
+    static bool ContenidoNoCoincide(string ruta, string? extensionContenido)
+    {
+        if (string.IsNullOrEmpty(extensionContenido)) return false;
+        var porContenido = TipoDe(extensionContenido);
+        return porContenido is TipoArchivo.Foto or TipoArchivo.Video && porContenido != TipoDe(ruta);
     }
 
     /// <summary>Si la ruta es una vista previa (<c>IMG_1234.HEIC.jpg</c>), la ruta del original; si no, null.</summary>
@@ -98,7 +119,8 @@ public static class Clasificador
         RxVistaPrevia.IsMatch(NombreDe(ruta)) ? RxExtJpg.Replace(ruta, "") : null;
 
     /// <summary>Si la foto cuenta para emparejar videos como Live Photo.</summary>
-    public static bool PuedeSerFotoLive(string ruta) => ExtFotoLive.Contains(Path.GetExtension(NombreDe(ruta)));
+    public static bool PuedeSerFotoLive(string ruta, string? extensionContenido = null) =>
+        ExtFotoLive.Contains(ExtensionEfectiva(ruta, extensionContenido));
 
     /// <summary>
     /// Clave para emparejar <c>IMG_1234.HEIC</c> con <c>IMG_1234.MOV</c>: primeros 2 niveles de la ruta

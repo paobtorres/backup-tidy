@@ -20,8 +20,12 @@ public enum FuenteFecha
 
 public readonly record struct FechaArchivo(DateTime Fecha, FuenteFecha Fuente);
 
-/// <summary>Fechas candidatas leidas del archivo, en orden de preferencia, sin validar.</summary>
-public sealed record MetadatosMedia(IReadOnlyList<DateTime> FechasExif, IReadOnlyList<DateTime> FechasContenedor, string? MarcaCamara)
+/// <summary>Lo leido del contenido del archivo. Las fechas son candidatas en orden de preferencia, sin validar.</summary>
+/// <param name="ExtensionContenido">
+/// Extension que corresponde al formato real segun los primeros bytes (".jpg", ".mov", ".heic"...), o null si no se reconoce.
+/// </param>
+public sealed record MetadatosMedia(IReadOnlyList<DateTime> FechasExif, IReadOnlyList<DateTime> FechasContenedor,
+                                    string? MarcaCamara, string? ExtensionContenido = null)
 {
     public static readonly MetadatosMedia Vacio = new([], [], null);
 

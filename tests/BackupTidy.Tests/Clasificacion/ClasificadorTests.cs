@@ -79,6 +79,36 @@ public class ClasificadorTests
         Assert.Equal(esperado, Clasificador.CategoriaDe(new DatosMedia(ruta, tamano, TieneMarcaCamara: false, fotoLive)));
 
     [Theory]
+    // JPEG guardado como .MOV (caso real): es una foto, nunca Live Photo ni Video
+    [InlineData(@"iPhone\DCIM\IMG_8979.MOV", ".jpg", true, CategoriaMedia.Fotos)]
+    [InlineData(@"iPhone\DCIM\IMG_8979.MOV", ".jpg", false, CategoriaMedia.Guardadas)]
+    [InlineData(@"iPhone\DCIM\IMG_8979.MP4", ".png", false, CategoriaMedia.Capturas)]
+    // Video guardado como .jpg (todas estas filas tienen foto Live al lado)
+    [InlineData(@"iPhone\DCIM\IMG_1.jpg", ".mov", false, CategoriaMedia.LivePhotos)]
+    // Mismo tipo con otro formato: manda la extension del nombre
+    [InlineData(@"iPhone\DCIM\IMG_1.DNG", ".tiff", false, CategoriaMedia.Fotos)]
+    [InlineData(@"iPhone\DCIM\IMG_1.MP4", ".mov", false, CategoriaMedia.LivePhotos)]
+    // Contenido no reconocido o que no es foto/video: manda la extension del nombre
+    [InlineData(@"iPhone\DCIM\IMG_1.MOV", null, false, CategoriaMedia.LivePhotos)]
+    [InlineData(@"iPhone\DCIM\IMG_1.MOV", ".pdf", false, CategoriaMedia.LivePhotos)]
+    public void CategoriaDe_segun_el_contenido(string ruta, string? extContenido, bool marcaCamara, CategoriaMedia esperado) =>
+        Assert.Equal(esperado, Clasificador.CategoriaDe(new DatosMedia(ruta, 3 * MB, marcaCamara, TieneFotoLive: true, extContenido)));
+
+    [Theory]
+    [InlineData("IMG_8979.MOV", ".jpg", "Es JPG con extension .MOV")]
+    [InlineData(@"DCIM\IMG_1.jpg", ".mov", "Es MOV con extension .jpg")]
+    [InlineData("IMG_1.DNG", ".tiff", null)]
+    [InlineData("IMG_1.mp4", ".mov", null)]
+    [InlineData("IMG_1.jpg", null, null)]
+    [InlineData("IMG_1.jpg", ".pdf", null)]
+    public void NotaContenido(string ruta, string? extContenido, string? esperado) =>
+        Assert.Equal(esperado, Clasificador.NotaContenido(ruta, extContenido));
+
+    [Fact]
+    public void Un_jpeg_guardado_como_mov_cuenta_como_foto_live() =>
+        Assert.True(Clasificador.PuedeSerFotoLive("IMG_1.MOV", ".jpg"));
+
+    [Theory]
     [InlineData("informe.pdf")]
     [InlineData("nota.opus")]
     public void CategoriaDe_rechaza_lo_que_no_es_foto_ni_video(string ruta) =>

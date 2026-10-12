@@ -46,4 +46,6 @@ public enum CategoriaMedia
 /// <param name="TieneFotoLive">
 /// Existe en el origen una foto con la misma <see cref="Clasificador.ClaveLive"/> (solo importa en videos).
 /// </param>
-public sealed record DatosMedia(string RutaRelativa, long Tamano, bool TieneMarcaCamara, bool TieneFotoLive);
+/// <param name="ExtensionContenido">Extension del formato real segun el contenido, si se pudo detectar.</param>
+public sealed record DatosMedia(string RutaRelativa, long Tamano, bool TieneMarcaCamara, bool TieneFotoLive,
+                                string? ExtensionContenido = null);
