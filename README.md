@@ -11,3 +11,18 @@ queda registrado y se puede deshacer.
 
 - [SDK de .NET 10](https://dotnet.microsoft.com/download/dotnet/10.0)
 - Git, VS Code (extensión C# Dev Kit recomendada)
+
+## Estructura
+
+```
+BackupTidy.slnx
+src/BackupTidy.Core    motor: clasificacion, fechas, duplicados, plan, ejecucion y deshacer (sin UI)
+src/BackupTidy.App     interfaz de escritorio (Avalonia + CommunityToolkit.Mvvm)
+tests/BackupTidy.Tests pruebas del motor (xUnit)
+```
+
+```
+dotnet build
+dotnet test
+dotnet run --project src/BackupTidy.App
+```
