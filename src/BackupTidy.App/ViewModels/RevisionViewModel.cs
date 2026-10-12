@@ -1,5 +1,6 @@
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
+using Avalonia.Threading;
 using BackupTidy.App.Servicios;
 using BackupTidy.Core.Fechas;
 using BackupTidy.Core.Plan;
@@ -15,6 +16,7 @@ public partial class RevisionViewModel : ViewModelBase
     readonly OpcionesAnalisis opciones;
     readonly IReadOnlyList<FilaPlan> plan;
     readonly List<FilaVista> filas;
+    readonly DispatcherTimer esperaBusqueda;
     int cargaVista;
 
     public RevisionViewModel(MainViewModel principal, OpcionesAnalisis opciones, ResultadoAnalisis resultado)
@@ -24,6 +26,12 @@ public partial class RevisionViewModel : ViewModelBase
         plan = resultado.Filas;
         Avisos = resultado.Avisos;
         filas = plan.Select(f => new FilaVista(f, opciones.Origen, opciones.Destino)).ToList();
+        esperaBusqueda = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+        esperaBusqueda.Tick += (_, _) =>
+        {
+            esperaBusqueda.Stop();
+            Filtrar();
+        };
 
         var aMover = plan.Where(f => f.Categoria != CategoriaPlan.Descartar).ToList();
         var descartes = plan.Where(f => f.Categoria == CategoriaPlan.Descartar).ToList();
@@ -99,7 +107,12 @@ public partial class RevisionViewModel : ViewModelBase
 
     partial void OnCategoriaSeleccionadaChanged(CategoriaVista? value) => Filtrar();
 
-    partial void OnBusquedaChanged(string value) => Filtrar();
+    // Con decenas de miles de filas se filtra cuando se deja de escribir, no en cada tecla
+    partial void OnBusquedaChanged(string value)
+    {
+        esperaBusqueda.Stop();
+        esperaBusqueda.Start();
+    }
 
     partial void OnSoloDudosasChanged(bool value) => Filtrar();
 
@@ -124,7 +137,10 @@ public partial class RevisionViewModel : ViewModelBase
         if (CategoriaSeleccionada?.Categoria is CategoriaPlan c) visibles = visibles.Where(f => f.Fila.Categoria == c);
         if (SoloDudosas) visibles = visibles.Where(f => f.EsDudosa);
         if (!string.IsNullOrWhiteSpace(Busqueda))
-            visibles = visibles.Where(f => f.Fila.Origen.Contains(Busqueda.Trim(), StringComparison.CurrentCultureIgnoreCase));
+        {
+            var texto = Busqueda.Trim();
+            visibles = visibles.Where(f => f.Fila.Origen.Contains(texto, StringComparison.OrdinalIgnoreCase));
+        }
         FilasVisibles = visibles.ToList();
         Seleccionada = FilasVisibles.Count > 0 ? FilasVisibles[0] : null;
     }
