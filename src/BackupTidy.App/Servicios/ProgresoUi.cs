@@ -9,7 +9,8 @@ namespace BackupTidy.App.Servicios;
 /// </summary>
 public sealed class ProgresoUi<T>(Action<T> aplicar, int intervaloMs = 80) : IProgress<T>
 {
-    long ultimo = long.MinValue;
+    // No long.MinValue: "ahora - long.MinValue" desborda a negativo y no pasaba ningun aviso
+    long ultimo = -intervaloMs;
 
     public void Report(T valor)
     {
