@@ -1,20 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:BackupTidy.App.ViewModels"
-             xmlns:s="using:BackupTidy.App.Servicios"
              x:Class="BackupTidy.App.Views.RevisionView"
              x:DataType="vm:RevisionViewModel">
-
-    <UserControl.DataTemplates>
-        <DataTemplate DataType="s:Miniatura">
-            <LayoutTransformControl>
-                <LayoutTransformControl.LayoutTransform>
-                    <RotateTransform Angle="{Binding Rotacion}" />
-                </LayoutTransformControl.LayoutTransform>
-                <Image Source="{Binding Imagen}" Stretch="Uniform" />
-            </LayoutTransformControl>
-        </DataTemplate>
-    </UserControl.DataTemplates>
 
     <UserControl.Styles>
         <Style Selector="ListBox.categorias ListBoxItem">
@@ -159,19 +147,19 @@
                             <StackPanel Spacing="4" Grid.ColumnSpan="2"
                                         IsVisible="{Binding !TieneRelacionado}">
                                 <Border Classes="vista">
-                                    <Panel><TextBlock Classes="secundario" FontSize="12" Text="Sin vista previa" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding $parent[UserControl].((vm:RevisionViewModel)DataContext).VistaArchivo, Converter={x:Static ObjectConverters.IsNull}}" /><ContentControl Content="{Binding $parent[UserControl].((vm:RevisionViewModel)DataContext).VistaArchivo}" /></Panel>
+                                    <Panel><TextBlock Classes="secundario" FontSize="12" Text="Sin vista previa" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding $parent[UserControl].((vm:RevisionViewModel)DataContext).VistaArchivo, Converter={x:Static ObjectConverters.IsNull}}" /><Image Source="{Binding $parent[UserControl].((vm:RevisionViewModel)DataContext).VistaArchivo}" Stretch="Uniform" /></Panel>
                                 </Border>
                             </StackPanel>
                             <StackPanel Spacing="4" IsVisible="{Binding TieneRelacionado}">
                                 <TextBlock Classes="etiqueta" Text="Este archivo" />
                                 <Border Classes="vista" Height="150">
-                                    <Panel><TextBlock Classes="secundario" FontSize="12" Text="Sin vista previa" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding $parent[UserControl].((vm:RevisionViewModel)DataContext).VistaArchivo, Converter={x:Static ObjectConverters.IsNull}}" /><ContentControl Content="{Binding $parent[UserControl].((vm:RevisionViewModel)DataContext).VistaArchivo}" /></Panel>
+                                    <Panel><TextBlock Classes="secundario" FontSize="12" Text="Sin vista previa" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding $parent[UserControl].((vm:RevisionViewModel)DataContext).VistaArchivo, Converter={x:Static ObjectConverters.IsNull}}" /><Image Source="{Binding $parent[UserControl].((vm:RevisionViewModel)DataContext).VistaArchivo}" Stretch="Uniform" /></Panel>
                                 </Border>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Spacing="4" IsVisible="{Binding TieneRelacionado}">
                                 <TextBlock Classes="etiqueta" Text="{Binding EtiquetaRelacionado}" TextTrimming="CharacterEllipsis" />
                                 <Border Classes="vista" Height="150">
-                                    <Panel><TextBlock Classes="secundario" FontSize="12" Text="Sin vista previa" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding $parent[UserControl].((vm:RevisionViewModel)DataContext).VistaRelacionado, Converter={x:Static ObjectConverters.IsNull}}" /><ContentControl Content="{Binding $parent[UserControl].((vm:RevisionViewModel)DataContext).VistaRelacionado}" /></Panel>
+                                    <Panel><TextBlock Classes="secundario" FontSize="12" Text="Sin vista previa" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding $parent[UserControl].((vm:RevisionViewModel)DataContext).VistaRelacionado, Converter={x:Static ObjectConverters.IsNull}}" /><Image Source="{Binding $parent[UserControl].((vm:RevisionViewModel)DataContext).VistaRelacionado}" Stretch="Uniform" /></Panel>
                                 </Border>
                             </StackPanel>
                         </Grid>

@@ -1,7 +1,9 @@
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
 using Avalonia.Threading;
+using Avalonia.Media.Imaging;
 using BackupTidy.App.Servicios;
+using BackupTidy.Core.Clasificacion;
 using BackupTidy.Core.Fechas;
 using BackupTidy.Core.Plan;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -17,6 +19,7 @@ public partial class RevisionViewModel : ViewModelBase
     readonly IReadOnlyList<FilaPlan> plan;
     readonly List<FilaVista> filas;
     readonly DispatcherTimer esperaBusqueda;
+    readonly Lazy<Dictionary<string, string>> fotosLive;
     int cargaVista;
 
     public RevisionViewModel(MainViewModel principal, OpcionesAnalisis opciones, ResultadoAnalisis resultado)
@@ -26,6 +29,7 @@ public partial class RevisionViewModel : ViewModelBase
         plan = resultado.Filas;
         Avisos = resultado.Avisos;
         filas = plan.Select(f => new FilaVista(f, opciones.Origen, opciones.Destino)).ToList();
+        fotosLive = new(FotosLive);
         esperaBusqueda = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
         esperaBusqueda.Tick += (_, _) =>
         {
@@ -87,10 +91,10 @@ public partial class RevisionViewModel : ViewModelBase
     public partial FilaVista? Seleccionada { get; set; }
 
     [ObservableProperty]
-    public partial Miniatura? VistaArchivo { get; set; }
+    public partial Bitmap? VistaArchivo { get; set; }
 
     [ObservableProperty]
-    public partial Miniatura? VistaRelacionado { get; set; }
+    public partial Bitmap? VistaRelacionado { get; set; }
 
     [ObservableProperty]
     public partial bool EnviarDescartesAPapelera { get; set; }
@@ -124,11 +128,27 @@ public partial class RevisionViewModel : ViewModelBase
         var carga = ++cargaVista;
         VistaArchivo = VistaRelacionado = null;
         if (value is null) return;
-        var archivo = await Miniaturas.Cargar(value.Fila.Origen, 640);
+        // Si el video de una Live Photo no tiene miniatura (sin el codec HEVC, por ejemplo), se ve su foto
+        var archivo = await Miniaturas.Cargar(value.Fila.Origen, 640)
+                      ?? await Miniaturas.Cargar(FotoDeLivePhoto(value.Fila), 640);
         var relacionado = await Miniaturas.Cargar(value.Fila.Relacionado, 640);
         if (carga != cargaVista) return;
         VistaArchivo = archivo;
         VistaRelacionado = relacionado;
+    }
+
+    string? FotoDeLivePhoto(FilaPlan fila) =>
+        fila.Categoria == CategoriaPlan.LivePhotos
+            ? fotosLive.Value.GetValueOrDefault(Clasificador.ClaveLive(Path.GetRelativePath(Origen, fila.Origen)))
+            : null;
+
+    // Las fotos del backup con la clave que empareja el video de una Live Photo con su foto
+    Dictionary<string, string> FotosLive()
+    {
+        var porClave = new Dictionary<string, string>();
+        foreach (var fila in plan.Where(f => Clasificador.PuedeSerFotoLive(f.Origen)))
+            porClave.TryAdd(Clasificador.ClaveLive(Path.GetRelativePath(Origen, fila.Origen)), fila.Origen);
+        return porClave;
     }
 
     void Filtrar()
