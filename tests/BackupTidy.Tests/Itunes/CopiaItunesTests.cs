@@ -130,6 +130,73 @@ public sealed class CopiaItunesTests : IDisposable
     }
 
     [Fact]
+    public void Una_copia_que_iTunes_no_termino_no_se_lista()
+    {
+        copia.Agregar(Carrete, "Media/DCIM/100APPLE/IMG_0001.HEIC");
+        var c = CopiaItunes.Abrir(copia.Ruta);
+        Assert.True(c.EstaTerminada());
+
+        copia.Estado("uploading");
+
+        Assert.False(c.EstaTerminada());
+        Assert.Contains("no está terminada", Assert.Throws<IOException>(() => c.Listar(ContenidoItunes.Todo)).Message);
+    }
+
+    [Fact]
+    public void Sin_Status_plist_se_toma_como_terminada()
+    {
+        File.Delete(Path.Combine(copia.Ruta, "Status.plist"));
+
+        Assert.True(CopiaItunes.Abrir(copia.Ruta).EstaTerminada());
+    }
+
+    [Fact]
+    public void Una_fecha_danada_se_pierde_sola()
+    {
+        copia.AgregarConMetadatos(Carrete, "Media/DCIM/100APPLE/IMG_0001.HEIC", "a"u8.ToArray(),
+                                  EscritorPlist.MBFile("Media/DCIM/100APPLE/IMG_0001.HEIC", 1, long.MaxValue, 1_700_000_000));
+        copia.Agregar(Carrete, "Media/DCIM/100APPLE/IMG_0002.HEIC");
+
+        var archivos = CopiaItunes.Abrir(copia.Ruta).Listar(ContenidoItunes.Todo);
+
+        Assert.Equal(2, archivos.Count);
+        var danada = archivos.Single(a => a.Destino.EndsWith("IMG_0001.HEIC"));
+        Assert.Null(danada.Modificado);
+        Assert.Equal(DateTime.UnixEpoch.AddSeconds(1_700_000_000), danada.Creado);
+    }
+
+    [Fact]
+    public void Las_filas_con_tipos_inesperados_se_omiten()
+    {
+        copia.Agregar(Carrete, "Media/DCIM/100APPLE/IMG_0001.HEIC");
+        copia.AgregarFila(12345L, Carrete, "Media/DCIM/100APPLE/IMG_0002.HEIC", null);
+        copia.AgregarFila("ab", Carrete, "Media/DCIM/100APPLE/IMG_0003.HEIC", null);
+        copia.AgregarFila(new string('a', 40), null, "Media/DCIM/100APPLE/IMG_0004.HEIC", null);
+        copia.AgregarFila(new string('b', 40), Carrete, 7L, null);
+        // Metadatos que no son blob: el archivo se lista, sin fecha
+        var id = new string('c', 40);
+        Directory.CreateDirectory(Path.Combine(copia.Ruta, "cc"));
+        File.WriteAllText(Path.Combine(copia.Ruta, "cc", id), "x");
+        copia.AgregarFila(id, Carrete, "Media/DCIM/100APPLE/IMG_0005.HEIC", "no es un plist");
+
+        var archivos = CopiaItunes.Abrir(copia.Ruta).Listar(ContenidoItunes.Todo);
+
+        Assert.Equal([@"DCIM\100APPLE\IMG_0001.HEIC", @"DCIM\100APPLE\IMG_0005.HEIC"], archivos.Select(a => a.Destino).Order());
+        Assert.Null(archivos.Single(a => a.Destino.EndsWith("IMG_0005.HEIC")).Modificado);
+    }
+
+    [Theory]
+    [InlineData(Carrete, "Media/DCIM/../IMG_0001.HEIC")]
+    [InlineData(Carrete, @"Media/DCIM/100APPLE/..\..\IMG_0001.HEIC")]
+    [InlineData(Carrete, "Media/DCIM/100APPLE/C:IMG_0001.HEIC")]
+    [InlineData(Carrete, "Media/PhotoData/Mutations/DCIM/../IMG_0001/Adjustments/FullSizeRender.heic")]
+    [InlineData(WhatsApp, @"Message/Media/x@s.whatsapp.net/0/a/..\..\foto.jpg")]
+    public void Un_nombre_que_saldria_de_la_carpeta_no_se_extrae(string dominio, string ruta)
+    {
+        Assert.Null(CopiaItunes.RutaDeSalida(dominio, ruta));
+    }
+
+    [Fact]
     public void Una_copia_encriptada_no_se_lista()
     {
         using var encriptada = new CopiaDePrueba(encriptada: true);

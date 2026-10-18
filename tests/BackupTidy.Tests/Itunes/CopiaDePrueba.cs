@@ -27,11 +27,38 @@ sealed class CopiaDePrueba : IDisposable
                 ["ProductType"] = "iPhone15,2",
             },
         }));
+        Estado("finished");
         conexion = new SqliteConnectionStringBuilder { DataSource = carpeta["Manifest.db"], Pooling = false }.ToString();
         Ejecutar("CREATE TABLE Files (fileID TEXT PRIMARY KEY, domain TEXT, relativePath TEXT, flags INTEGER, file BLOB)");
     }
 
     public string Ruta => carpeta.Ruta;
+
+    /// <summary><c>Status.plist</c> como lo deja iTunes: <c>finished</c> al terminar la copia.</summary>
+    public void Estado(string snapshotState) =>
+        File.WriteAllBytes(carpeta["Status.plist"], EscritorPlist.Escribir(new Dictionary<string, object?>
+        {
+            ["IsFullBackup"] = false,
+            ["Version"] = "3.3",
+            ["BackupState"] = "new",
+            ["SnapshotState"] = snapshotState,
+        }));
+
+    /// <summary>Una fila de archivo (flags = 1) con lo que sea en cada columna: SQLite no controla los tipos.</summary>
+    public void AgregarFila(object? id, object? dominio, object? ruta, object? file) =>
+        Ejecutar("INSERT INTO Files VALUES ($id, $dominio, $ruta, 1, $file)",
+                 ("$id", id ?? DBNull.Value), ("$dominio", dominio ?? DBNull.Value), ("$ruta", ruta ?? DBNull.Value), ("$file", file ?? DBNull.Value));
+
+    /// <summary>Agrega un archivo con los metadatos dados tal cual (el blob de la columna <c>file</c>).</summary>
+    public string AgregarConMetadatos(string dominio, string rutaRelativa, byte[] contenido, byte[] metadatos)
+    {
+        var id = Convert.ToHexStringLower(SHA1.HashData(Encoding.UTF8.GetBytes($"{dominio}-{rutaRelativa}")));
+        var ruta = carpeta[Path.Combine(id[..2], id)];
+        Directory.CreateDirectory(Path.GetDirectoryName(ruta)!);
+        File.WriteAllBytes(ruta, contenido);
+        AgregarFila(id, dominio, rutaRelativa, metadatos);
+        return ruta;
+    }
 
     /// <summary>Agrega un archivo y devuelve su ruta dentro de la copia (la del hash).</summary>
     public string Agregar(string dominio, string rutaRelativa, byte[] contenido, DateTime? modificado = null,

@@ -83,7 +83,17 @@ public sealed class CopiaItunes
         var copias = new List<CopiaItunes>();
         foreach (var ubicacion in ubicaciones.Where(Directory.Exists))
         {
-            foreach (var carpeta in Directory.EnumerateDirectories(ubicacion))
+            string[] carpetas;
+            try
+            {
+                carpetas = Directory.GetDirectories(ubicacion);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // Sin permiso para ver la carpeta: se sigue con las otras ubicaciones
+                continue;
+            }
+            foreach (var carpeta in carpetas)
             {
                 try
                 {
@@ -128,12 +138,35 @@ public sealed class CopiaItunes
             manifiesto.GetValueOrDefault("IsEncrypted") as bool? ?? false);
     }
 
+    /// <summary>
+    /// Si iTunes termino la copia. Mientras la hace (o si se corto a la mitad) <c>Status.plist</c> no dice
+    /// <c>SnapshotState = finished</c>, y el indice puede estar a medio escribir. Se lee cada vez: puede cambiar.
+    /// </summary>
+    /// <remarks>Sin <c>Status.plist</c> legible no se puede saber: se toma como terminada.</remarks>
+    public bool EstaTerminada()
+    {
+        try
+        {
+            var estado = ListaPropiedades.Leer(File.ReadAllBytes(Path.Combine(Carpeta, "Status.plist"))) as Dictionary<string, object?>;
+            return estado?.GetValueOrDefault("SnapshotState") is not string s || s == "finished";
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or FormatException)
+        {
+            return true;
+        }
+    }
+
     /// <summary>Lo que se puede extraer, con su nombre real. Solo lee el indice, no copia nada.</summary>
-    /// <remarks>Dos archivos con el mismo nombre de salida quedan como <c>nombre_2.ext</c>: nunca se pisan.</remarks>
+    /// <remarks>
+    /// Dos archivos con el mismo nombre de salida quedan como <c>nombre_2.ext</c>: nunca se pisan. Las filas del
+    /// indice que no tienen la forma esperada se omiten.
+    /// </remarks>
     /// <exception cref="ArgumentException">La copia esta encriptada.</exception>
+    /// <exception cref="IOException">La copia no esta terminada, o Manifest.db esta danado.</exception>
     public IReadOnlyList<ArchivoItunes> Listar(ContenidoItunes contenido, CancellationToken cancelar = default)
     {
         if (Encriptada) throw new ArgumentException("La copia está encriptada (tiene contraseña): todavía no se puede leer.");
+        if (!EstaTerminada()) throw new IOException(SinTerminar);
 
         var candidatos = new List<(ContenidoItunes Que, string Ruta, FileInfo Info, byte[]? Metadatos)>();
         var fotosDelCarrete = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -158,14 +191,17 @@ public sealed class CopiaItunes
             while (filas.Read())
             {
                 cancelar.ThrowIfCancellationRequested();
-                var id = filas.GetString(0);
-                if (RutaDeSalida(filas.GetString(1), filas.GetString(2)) is not (var que, var ruta)) continue;
+                // SQLite no obliga a respetar los tipos de las columnas: lo que no es texto (o blob) se omite
+                if (filas.GetValue(0) is not string id || !EsHash(id)
+                    || filas.GetValue(1) is not string dominio || filas.GetValue(2) is not string rutaRelativa
+                    || RutaDeSalida(dominio, rutaRelativa) is not (var que, var ruta))
+                    continue;
                 if (que == ContenidoItunes.Carrete && Clasificador.TipoDe(ruta) == TipoArchivo.Foto) fotosDelCarrete.Add(SinExtension(ruta));
                 if ((contenido & que) == 0) continue;
 
                 // Los archivos estan en <copia>\<2 primeros caracteres del hash>\<hash>
                 var info = new FileInfo(Path.Combine(Carpeta, id[..2], id));
-                if (info.Exists) candidatos.Add((que, ruta, info, filas.IsDBNull(3) ? null : (byte[])filas[3]));
+                if (info.Exists) candidatos.Add((que, ruta, info, filas.GetValue(3) as byte[]));
             }
         }
         catch (SqliteException e)
@@ -190,6 +226,12 @@ public sealed class CopiaItunes
 
     const string EditadaSufijo = "_editada";
 
+    const string SinTerminar = "La copia no está terminada: iTunes la está haciendo ahora o se cortó a la mitad. "
+                               + "Espera a que termine (o vuelve a hacerla) y vuelve a intentarlo.";
+
+    // SHA1 en hexadecimal: 40 caracteres
+    static bool EsHash(string id) => id.Length == 40 && id.All(char.IsAsciiHexDigit);
+
     static string SinExtension(string ruta) => Path.Combine(Path.GetDirectoryName(ruta)!, Path.GetFileNameWithoutExtension(ruta));
 
     /// <summary>
@@ -205,21 +247,27 @@ public sealed class CopiaItunes
         {
             // Media/DCIM/106APPLE/IMG_6671.HEIC (y su .MOV si es Live Photo, con el mismo nombre)
             if (partes is ["Media", "DCIM", var carpeta, var nombre])
-                return (ContenidoItunes.Carrete, Path.Combine("DCIM", carpeta, nombre));
+                return Salida(ContenidoItunes.Carrete, "DCIM", carpeta, nombre);
             // Media/PhotoData/Mutations/DCIM/106APPLE/IMG_6352/Adjustments/FullSizeRender.heic: la version editada.
             // Una Live Photo editada tiene FullSizeRender.heic y .mov: quedan emparejadas como IMG_6352_editada
             if (partes is ["Media", "PhotoData", "Mutations", "DCIM", var c, var foto, "Adjustments", var render]
                 && render.StartsWith("FullSizeRender.", StringComparison.OrdinalIgnoreCase))
-                return (ContenidoItunes.Editadas, Path.Combine("DCIM", c, foto + EditadaSufijo + Path.GetExtension(render)));
+                return Salida(ContenidoItunes.Editadas, "DCIM", c, foto + EditadaSufijo + Path.GetExtension(render));
             return null;
         }
 
         // Message/Media/<chat>/0/a/<uuid>.jpg: el nombre ya es unico. Los .webp de los chats son stickers
         if (CarpetasWhatsApp.TryGetValue(dominio, out var carpetaWhatsApp) && partes is ["Message", "Media", .., var archivo]
             && !archivo.EndsWith(".webp", StringComparison.OrdinalIgnoreCase))
-            return (ContenidoItunes.WhatsApp, Path.Combine(carpetaWhatsApp, archivo));
+            return Salida(ContenidoItunes.WhatsApp, carpetaWhatsApp, archivo);
         return null;
     }
+
+    static readonly char[] NoValidos = Path.GetInvalidFileNameChars();
+
+    // Un nombre que en Windows no es valido (con \ o :, o "..") se omite: nada sale de la carpeta de extraccion
+    static (ContenidoItunes, string)? Salida(ContenidoItunes que, params string[] nombres) =>
+        nombres.All(n => n.Length > 0 && n is not ("." or "..") && n.IndexOfAny(NoValidos) < 0) ? (que, Path.Combine(nombres)) : null;
 
     static string NombreLibre(string ruta, HashSet<string> usadas)
     {
@@ -244,5 +292,9 @@ public sealed class CopiaItunes
         }
     }
 
-    static DateTime? Unix(object? segundos) => segundos is long s && s > 0 ? DateTime.UnixEpoch.AddSeconds(s) : null;
+    // Una fecha fuera de rango (metadatos danados) se pierde sola: no hace fallar toda la copia
+    static DateTime? Unix(object? segundos) =>
+        segundos is long s && s > 0 && s <= UnixMaximo ? DateTime.UnixEpoch.AddSeconds(s) : null;
+
+    static readonly long UnixMaximo = (long)(DateTime.MaxValue - DateTime.UnixEpoch).TotalSeconds;
 }

@@ -53,17 +53,50 @@ public sealed class ExtractorItunesTests : IDisposable
     }
 
     [Fact]
-    public void No_pisa_un_archivo_distinto_con_el_mismo_nombre()
+    public void Un_archivo_distinto_con_el_mismo_nombre_no_se_pisa_y_el_nuevo_va_con_2()
     {
         copia.Agregar(Carrete, "Media/DCIM/100APPLE/IMG_0001.HEIC", "de la copia");
+        copia.Agregar(Carrete, "Media/DCIM/100APPLE/IMG_0001_2.HEIC", "otro de la copia");
         salida.Crear(@"DCIM\100APPLE\IMG_0001.HEIC", "otro archivo");
+        var archivos = Listar();
 
-        var r = ExtractorItunes.Extraer(Listar(), salida.Ruta);
+        var r = ExtractorItunes.Extraer(archivos, salida.Ruta);
 
-        Assert.Equal(0, r.Copiados);
-        Assert.Single(r.Errores);
+        Assert.Equal((2, 0), (r.Copiados, r.Errores.Count));
         Assert.Equal("otro archivo", File.ReadAllText(salida[@"DCIM\100APPLE\IMG_0001.HEIC"]));
+        Assert.Equal("de la copia", File.ReadAllText(salida[@"DCIM\100APPLE\IMG_0001_2.HEIC"]));
+        // El _2 de la copia no pisa al que acaba de quedar ahi
+        Assert.Equal("otro de la copia", File.ReadAllText(salida[@"DCIM\100APPLE\IMG_0001_2_2.HEIC"]));
         Assert.Empty(Directory.EnumerateFiles(salida.Ruta, "*.parcial", SearchOption.AllDirectories));
+
+        // Al repetir los encuentra donde quedaron
+        Assert.Equal(0, ExtractorItunes.BytesPendientes(archivos, salida.Ruta));
+        var repetida = ExtractorItunes.Extraer(archivos, salida.Ruta);
+        Assert.Equal((0, 2), (repetida.Copiados, repetida.YaEstaban));
+        Assert.Equal(3, Directory.EnumerateFiles(salida.Ruta, "*", SearchOption.AllDirectories).Count());
+    }
+
+    [Fact]
+    public void Lo_pendiente_no_cuenta_lo_ya_copiado()
+    {
+        copia.Agregar(Carrete, "Media/DCIM/100APPLE/IMG_0001.HEIC", "uno");
+        copia.Agregar(Carrete, "Media/DCIM/100APPLE/IMG_0002.HEIC", "dos dos");
+        var archivos = Listar();
+
+        Assert.Equal(10, ExtractorItunes.BytesPendientes(archivos, salida["no existe todavia"]));
+        ExtractorItunes.Extraer(archivos.Take(1).ToList(), salida.Ruta);
+        Assert.Equal(7, ExtractorItunes.BytesPendientes(archivos, salida.Ruta));
+    }
+
+    [Fact]
+    public void Sin_archivos_igual_crea_la_carpeta()
+    {
+        var destino = salida["vacia"];
+
+        var r = ExtractorItunes.Extraer([], destino);
+
+        Assert.Equal((0, 0), (r.Copiados, r.YaEstaban));
+        Assert.True(Directory.Exists(destino));
     }
 
     [Fact]

@@ -18,6 +18,17 @@ public partial class ImportarItunesViewModel : ViewModelBase
     CancellationTokenSource? cancelar;
     int lectura;
 
+    // Lo elegido y su total: se recalculan al cambiar la copia o los contenidos, no con cada tecla en la carpeta
+    IReadOnlyList<ArchivoItunes> elegidos = [];
+    long bytesElegidos;
+
+    // Lo que falta copiar a la carpeta de salida y lo libre en su disco; null mientras se calcula
+    (long Pendientes, long Libres)? espacio;
+    int calculo;
+
+    // La carpeta que se sugirio para la copia elegida: si no se cambio, al elegir otra copia se sugiere la suya
+    string? sugerida;
+
     public ImportarItunesViewModel(MainViewModel principal)
     {
         this.principal = principal;
@@ -76,8 +87,6 @@ public partial class ImportarItunesViewModel : ViewModelBase
 
     ContenidoItunes Elegido => Contenidos.Where(c => c.Incluir).Aggregate(ContenidoItunes.Ninguno, (t, c) => t | c.Contenido);
 
-    long BytesElegidos => archivos.Where(a => (Elegido & a.Contenido) != 0).Sum(a => a.Bytes);
-
     string? CarpetaSalida
     {
         get
@@ -110,28 +119,48 @@ public partial class ImportarItunesViewModel : ViewModelBase
                 if (!string.Equals(Path.GetPathRoot(salida), Path.GetPathRoot(Path.GetFullPath(organizada)), StringComparison.OrdinalIgnoreCase))
                     return $"Tiene que estar en el mismo disco que la carpeta organizada ({Path.GetPathRoot(Path.GetFullPath(organizada))}).";
             }
-            if (BytesElegidos > EspacioLibre(salida))
-                return $"No hay espacio: se necesitan {Formato.Tamano(BytesElegidos)} y en {Path.GetPathRoot(salida)} quedan {Formato.Tamano(EspacioLibre(salida))}.";
+            // Solo lo que falta: si una extraccion anterior se corto, lo ya copiado no vuelve a ocupar lugar
+            if (espacio is { } e && e.Pendientes > e.Libres)
+                return $"No hay espacio: faltan copiar {Formato.Tamano(e.Pendientes)} y en {Path.GetPathRoot(salida)} quedan {Formato.Tamano(e.Libres)}.";
             return null;
         }
     }
 
-    public string? TextoEspacio =>
-        CarpetaSalida is string salida && archivos.Count > 0
-            ? $"Se copian {Formato.Tamano(BytesElegidos)} · quedan libres {Formato.Tamano(EspacioLibre(salida))} en {Path.GetPathRoot(salida)}"
-            : null;
+    public string? TextoEspacio
+    {
+        get
+        {
+            if (CarpetaSalida is not string salida || elegidos.Count == 0) return null;
+            if (espacio is not { } e) return "Calculando el espacio…";
+            var libres = $"quedan libres {Formato.Tamano(e.Libres)} en {Path.GetPathRoot(salida)}";
+            return e.Pendientes < bytesElegidos
+                ? $"Faltan copiar {Formato.Tamano(e.Pendientes)} de {Formato.Tamano(bytesElegidos)} (lo demás ya está en la carpeta) · {libres}"
+                : $"Se copian {Formato.Tamano(bytesElegidos)} · {libres}";
+        }
+    }
 
-    bool PuedeExtraer => !Leyendo && !Extrayendo && archivos.Count > 0 && Elegido != ContenidoItunes.Ninguno
-                         && CarpetaSalida is not null && ErrorSalida is null;
+    bool PuedeExtraer => !Leyendo && !Extrayendo && elegidos.Count > 0 && CarpetaSalida is not null
+                         && espacio is not null && ErrorSalida is null;
 
     bool PuedeCancelar => Extrayendo;
 
     async Task Buscar()
     {
-        var copias = await Task.Run(() => CopiaItunes.Buscar(CopiaItunes.UbicacionesHabituales()));
-        Copias = copias.Select(c => new CopiaVista(c)).ToList();
-        Buscando = false;
-        Seleccionada = Copias.FirstOrDefault(c => !c.Copia.Encriptada) ?? Copias.FirstOrDefault();
+        try
+        {
+            var copias = await Task.Run(() => CopiaItunes.Buscar(CopiaItunes.UbicacionesHabituales()));
+            Copias = copias.Select(c => new CopiaVista(c)).ToList();
+            Seleccionada = Copias.FirstOrDefault(c => !c.Copia.Encriptada) ?? Copias.FirstOrDefault();
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            Error = "No se pudieron buscar las copias de iTunes: " + e.Message;
+        }
+        finally
+        {
+            // Pase lo que pase deja de buscar: si no, la pantalla queda en "Buscando copias…"
+            Buscando = false;
+        }
     }
 
     async partial void OnSeleccionadaChanged(CopiaVista? value)
@@ -143,6 +172,13 @@ public partial class ImportarItunesViewModel : ViewModelBase
         foreach (var c in Contenidos) c.Resumir([]);
         Actualizar();
         if (value is null) return;
+
+        // La carpeta sugerida es por dispositivo: si no se cambio a mano, sigue a la copia elegida
+        if (string.IsNullOrWhiteSpace(Salida) || Salida == sugerida)
+        {
+            sugerida = SalidaSugerida(value.Copia);
+            Salida = sugerida;
+        }
         if (value.Copia.Encriptada)
         {
             Error = "Esta copia está encriptada (tiene contraseña). Todavía no se puede leer: en iTunes o en la app Dispositivos de Apple, "
@@ -157,7 +193,6 @@ public partial class ImportarItunesViewModel : ViewModelBase
             if (esta != lectura) return;
             archivos = leidos;
             foreach (var c in Contenidos) c.Resumir(leidos.Where(a => a.Contenido == c.Contenido).ToList());
-            if (string.IsNullOrWhiteSpace(Salida)) Salida = SalidaSugerida(value.Copia);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
         {
@@ -186,7 +221,49 @@ public partial class ImportarItunesViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Cambio la copia, lo leido o que contenidos se incluyen.</summary>
     internal void Actualizar()
+    {
+        var elegido = Elegido;
+        elegidos = archivos.Where(a => (elegido & a.Contenido) != 0).ToList();
+        bytesElegidos = elegidos.Sum(a => a.Bytes);
+        CalcularEspacio();
+    }
+
+    partial void OnSalidaChanged(string value) => CalcularEspacio();
+
+    // Mira en la carpeta de salida que ya esta copiado: un archivo por archivo, asi que se hace aparte y,
+    // mientras se escribe la ruta, recien cuando se deja de escribir
+    async void CalcularEspacio()
+    {
+        var este = ++calculo;
+        espacio = null;
+        Notificar();
+        if (CarpetaSalida is not string salida || elegidos.Count == 0) return;
+
+        var lista = elegidos;
+        var total = bytesElegidos;
+        await Task.Delay(300);
+        if (este != calculo) return;
+        var calculado = await Task.Run(() =>
+        {
+            long pendientes;
+            try
+            {
+                pendientes = Directory.Exists(salida) ? ExtractorItunes.BytesPendientes(lista, salida) : total;
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
+            {
+                pendientes = total;
+            }
+            return (pendientes, EspacioLibre(salida));
+        });
+        if (este != calculo) return;
+        espacio = calculado;
+        Notificar();
+    }
+
+    void Notificar()
     {
         OnPropertyChanged(nameof(ErrorSalida));
         OnPropertyChanged(nameof(TextoEspacio));
@@ -220,7 +297,7 @@ public partial class ImportarItunesViewModel : ViewModelBase
     {
         var copia = Seleccionada!.Copia;
         var salida = CarpetaSalida!;
-        var elegidos = archivos.Where(a => (Elegido & a.Contenido) != 0).ToList();
+        var aCopiar = elegidos;
         cancelar = new CancellationTokenSource();
         Error = null;
         Porcentaje = 0;
@@ -234,7 +311,13 @@ public partial class ImportarItunesViewModel : ViewModelBase
                 Detalle = $"{Formato.Cantidad(p.Hechos)} de {Formato.Cantidad(p.Total)} archivos";
             });
             var token = cancelar.Token;
-            var r = await Task.Run(() => ExtractorItunes.Extraer(elegidos, salida, progreso, token), token);
+            var r = await Task.Run(() =>
+            {
+                // Lo leido es de cuando se eligio la copia: si despues iTunes empezo a hacerla de nuevo, se espera
+                if (!copia.EstaTerminada())
+                    throw new IOException("iTunes está haciendo esta copia ahora: espera a que termine y vuelve a elegirla.");
+                return ExtractorItunes.Extraer(aCopiar, salida, progreso, token);
+            }, token);
 
             var errores = r.Errores.Count == 0 ? "" : $" {Formato.Cantidad(r.Errores.Count)} no se pudieron copiar (por ejemplo {r.Errores[0]}).";
             principal.Carpetas.Origen = salida;

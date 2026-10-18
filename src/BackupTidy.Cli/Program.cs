@@ -71,7 +71,18 @@ try
                 Console.WriteLine($"{copia.Dispositivo}  iOS {copia.VersionIos}  {copia.Fecha?.ToLocalTime():yyyy-MM-dd HH:mm}{(copia.Encriptada ? "  (encriptada)" : "")}");
                 Console.WriteLine($"  {copia.Carpeta}");
                 if (copia.Encriptada) continue;
-                foreach (var g in copia.Listar(ContenidoItunes.Todo).GroupBy(a => a.Contenido))
+                IReadOnlyList<ArchivoItunes> contenido;
+                try
+                {
+                    contenido = copia.Listar(ContenidoItunes.Todo);
+                }
+                catch (IOException e)
+                {
+                    // Una copia sin terminar o danada no impide ver las demas
+                    Console.WriteLine("  " + e.Message);
+                    continue;
+                }
+                foreach (var g in contenido.GroupBy(a => a.Contenido))
                     Console.WriteLine($"  {g.Key,-10}{g.Count(),8} archivos{g.Sum(a => a.Bytes) / 1073741824.0,10:N2} GB");
             }
             return 0;
@@ -81,11 +92,16 @@ try
             var copia = CopiaItunes.Abrir(Requerida("copia"));
             var salida = Requerida("salida");
             var contenido = opciones.GetValueOrDefault("contenido") is { Count: > 0 } lista
-                ? lista.SelectMany(v => v.Split(',')).Aggregate(ContenidoItunes.Ninguno, (c, v) => c | Enum.Parse<ContenidoItunes>(v, ignoreCase: true))
+                ? lista.SelectMany(v => v.Split(',')).Aggregate(ContenidoItunes.Ninguno, (c, v) => c | Contenido(v))
                 : ContenidoItunes.Todo;
             var archivos = copia.Listar(contenido);
             // Para probar con una parte: los primeros N
-            if (opciones.GetValueOrDefault("maximo") is [var maximo]) archivos = archivos.Take(int.Parse(maximo, CultureInfo.InvariantCulture)).ToList();
+            if (opciones.TryGetValue("maximo", out var maximo))
+            {
+                if (maximo is not [var texto] || !int.TryParse(texto, NumberStyles.None, CultureInfo.InvariantCulture, out var n) || n <= 0)
+                    throw new ArgumentException("--maximo tiene que ser un número entero mayor que 0, por ejemplo --maximo 200");
+                archivos = archivos.Take(n).ToList();
+            }
 
             Directory.CreateDirectory(salida);
             var pendientes = ExtractorItunes.BytesPendientes(archivos, salida);
@@ -134,6 +150,15 @@ static int Ayuda()
         """);
     return 1;
 }
+
+static ContenidoItunes Contenido(string nombre) =>
+    nombre.Trim().ToLowerInvariant() switch
+    {
+        "carrete" => ContenidoItunes.Carrete,
+        "editadas" => ContenidoItunes.Editadas,
+        "whatsapp" => ContenidoItunes.WhatsApp,
+        _ => throw new ArgumentException($"--contenido no reconoce \"{nombre}\": puede ser carrete, editadas y/o whatsapp, separados por coma"),
+    };
 
 static Dictionary<string, List<string>> LeerOpciones(string[] args)
 {

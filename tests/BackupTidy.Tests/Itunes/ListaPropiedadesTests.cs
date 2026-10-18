@@ -108,4 +108,43 @@ public sealed class ListaPropiedadesTests
 
         Assert.Throws<FormatException>(() => ListaPropiedades.Leer(datos));
     }
+
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(1e300)]
+    public void Una_fecha_fuera_de_rango_da_FormatException(double segundos)
+    {
+        var fecha = new byte[8];
+        System.Buffers.Binary.BinaryPrimitives.WriteDoubleBigEndian(fecha, segundos);
+        byte[] datos =
+        [
+            .. "bplist00"u8,
+            0x33, .. fecha,     // 8: fecha
+            8,                  // 17: offsets
+            0, 0, 0, 0, 0, 0, 1, 1,
+            0, 0, 0, 0, 0, 0, 0, 1,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 17,
+        ];
+
+        Assert.Throws<FormatException>(() => ListaPropiedades.Leer(datos));
+    }
+
+    [Fact]
+    public void Un_largo_imposible_da_FormatException_sin_reservar_memoria()
+    {
+        byte[] datos =
+        [
+            .. "bplist00"u8,
+            0xAF, 0x12, 0x7F, 0xFF, 0xFF, 0xFF, // 8: lista de 2.147.483.647 elementos en un archivo de 47 bytes
+            8,                                  // 14: offsets
+            0, 0, 0, 0, 0, 0, 1, 1,
+            0, 0, 0, 0, 0, 0, 0, 1,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 14,
+        ];
+
+        Assert.Throws<FormatException>(() => ListaPropiedades.Leer(datos));
+    }
 }

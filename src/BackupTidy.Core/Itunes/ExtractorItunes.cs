@@ -18,8 +18,16 @@ public static class ExtractorItunes
     const string Parcial = ".parcial";
 
     /// <summary>Bytes que falta copiar: lo extraido en una vez anterior no cuenta.</summary>
-    public static long BytesPendientes(IEnumerable<ArchivoItunes> archivos, string salida) =>
-        archivos.Where(a => !YaExtraido(a, Path.Combine(salida, a.Destino))).Sum(a => a.Bytes);
+    public static long BytesPendientes(IEnumerable<ArchivoItunes> archivos, string salida, CancellationToken cancelar = default)
+    {
+        long bytes = 0;
+        foreach (var (archivo, _, yaEstaba) in Destinos(archivos, salida))
+        {
+            cancelar.ThrowIfCancellationRequested();
+            if (!yaEstaba) bytes += archivo.Bytes;
+        }
+        return bytes;
+    }
 
     /// <exception cref="IOException">Se lleno el disco: se detiene en vez de fallar archivo por archivo.</exception>
     /// <exception cref="OperationCanceledException">Se cancelo; lo copiado hasta ahi queda y se retoma.</exception>
@@ -27,15 +35,14 @@ public static class ExtractorItunes
                                               IProgress<(int Hechos, int Total)>? progreso = null,
                                               CancellationToken cancelar = default)
     {
-        int copiados = 0, yaEstaban = 0;
+        int copiados = 0, yaEstaban = 0, hechos = 0;
         long bytes = 0;
         var errores = new List<string>();
-        for (var i = 0; i < archivos.Count; i++)
+        Directory.CreateDirectory(salida);
+        foreach (var (archivo, destino, yaEstaba) in Destinos(archivos, salida))
         {
             cancelar.ThrowIfCancellationRequested();
-            var archivo = archivos[i];
-            var destino = Path.Combine(salida, archivo.Destino);
-            if (YaExtraido(archivo, destino))
+            if (yaEstaba)
             {
                 yaEstaban++;
             }
@@ -49,7 +56,7 @@ public static class ExtractorItunes
                     // La fecha del iPhone: sin esto todo quedaria con la de hoy y el analisis la tomaria por dudosa
                     if (archivo.Creado is DateTime creado) File.SetCreationTimeUtc(parcial, creado);
                     if (archivo.Modificado is DateTime modificado) File.SetLastWriteTimeUtc(parcial, modificado);
-                    // Sin sobrescribir: si ya hay otro archivo con ese nombre, queda como error
+                    // Sin sobrescribir: el nombre estaba libre, pero si mientras tanto aparecio otro archivo no se pisa
                     File.Move(parcial, destino);
                     copiados++;
                     bytes += archivo.Bytes;
@@ -61,15 +68,37 @@ public static class ExtractorItunes
                     errores.Add($"{archivo.Destino}: {e.Message}");
                 }
             }
-            progreso?.Report((i + 1, archivos.Count));
+            progreso?.Report((++hechos, archivos.Count));
         }
         return new ResultadoExtraccion(copiados, yaEstaban, bytes, errores);
     }
 
-    static bool YaExtraido(ArchivoItunes archivo, string destino)
+    /// <summary>
+    /// Donde va cada archivo y si ya estaba de una vez anterior (mismo nombre y tamano). Si en la salida hay otro
+    /// archivo con ese nombre no se pisa: va como <c>nombre_2.ext</c>, y al repetir se lo encuentra ahi.
+    /// </summary>
+    static IEnumerable<(ArchivoItunes Archivo, string Destino, bool YaEstaba)> Destinos(IEnumerable<ArchivoItunes> archivos, string salida)
     {
-        var info = new FileInfo(destino);
-        return info.Exists && info.Length == archivo.Bytes;
+        // Los nombres ya asignados en esta pasada: dos archivos de la copia nunca van al mismo lugar
+        var tomados = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var archivo in archivos)
+        {
+            var deseado = Path.Combine(salida, archivo.Destino);
+            var destino = deseado;
+            for (var n = 2; ; n++)
+            {
+                if (tomados.Add(destino))
+                {
+                    var info = new FileInfo(destino);
+                    if (!info.Exists || info.Length == archivo.Bytes)
+                    {
+                        yield return (archivo, destino, info.Exists);
+                        break;
+                    }
+                }
+                destino = Path.Combine(Path.GetDirectoryName(deseado)!, $"{Path.GetFileNameWithoutExtension(deseado)}_{n}{Path.GetExtension(deseado)}");
+            }
+        }
     }
 
     // ERROR_HANDLE_DISK_FULL (39) y ERROR_DISK_FULL (112)

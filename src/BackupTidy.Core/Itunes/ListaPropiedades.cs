@@ -17,6 +17,8 @@ public readonly record struct UidPlist(long Valor);
 public static class ListaPropiedades
 {
     static readonly DateTime Epoca2001 = new(2001, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+    static readonly double SegundosMinimos = (DateTime.MinValue - Epoca2001).TotalSeconds + 1;
+    static readonly double SegundosMaximos = (DateTime.MaxValue - Epoca2001).TotalSeconds - 1;
 
     public static bool EsBinaria(ReadOnlySpan<byte> datos) => datos.StartsWith("bplist00"u8);
 
@@ -80,7 +82,12 @@ public static class ListaPropiedades
                         ? (double)BinaryPrimitives.ReadSingleBigEndian(Bytes(pos + 1, 4))
                         : BinaryPrimitives.ReadDoubleBigEndian(Bytes(pos + 1, 8));
                 case 0x3:
-                    return Epoca2001.AddSeconds(BinaryPrimitives.ReadDoubleBigEndian(Bytes(pos + 1, 8)));
+                {
+                    var segundos = BinaryPrimitives.ReadDoubleBigEndian(Bytes(pos + 1, 8));
+                    if (!double.IsFinite(segundos) || segundos < SegundosMinimos || segundos > SegundosMaximos)
+                        throw new FormatException("Lista de propiedades con una fecha fuera de rango");
+                    return Epoca2001.AddSeconds(segundos);
+                }
                 case 0x4:
                 {
                     var (n, inicio) = Largo(pos, info);
@@ -130,7 +137,8 @@ public static class ListaPropiedades
             if (marca >> 4 != 0x1) throw new FormatException("Lista de propiedades danada");
             var tam = 1 << (marca & 0xF);
             var n = Entero(Bytes(pos + 2, tam));
-            if (n > int.MaxValue) throw new FormatException("Lista de propiedades danada");
+            // Cada elemento ocupa al menos un byte: mas que eso es un largo danado (y reservar lugar se quedaria sin memoria)
+            if (n > (ulong)datos.Length) throw new FormatException("Lista de propiedades danada");
             return ((int)n, pos + 2 + tam);
         }
 

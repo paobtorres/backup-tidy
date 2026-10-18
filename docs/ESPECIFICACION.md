@@ -142,6 +142,8 @@ nombre y fecha reales, y esa carpeta sigue el flujo normal. La copia de iTunes n
   solo lectura con `immutable=1`: ni bloqueos ni archivos `-wal`/`-shm` en la copia.
 - `file` es un NSKeyedArchiver (MBFile) con `LastModified` y `Birth` en segundos Unix: son las fechas que
   se ponen a la copia. Sin eso todo tendria la fecha de la extraccion y caeria en `_fecha_dudosa`.
+- `Status.plist`: `SnapshotState = finished` cuando iTunes termino. Si dice otra cosa (la esta haciendo o se
+  corto) no se lee ni se extrae: el indice puede estar a medio escribir. Sin `Status.plist` se toma como terminada.
 - Cifradas (`IsEncrypted`): todavia no. iOS 9 o anterior (`Manifest.mbdb`): todavia no.
 
 | Que | Dominio y ruta | Sale como |

@@ -34,7 +34,11 @@ static class EscritorPlist
     }
 
     /// <summary>Metadatos de un archivo como los guarda Manifest.db: un MBFile en NSKeyedArchiver.</summary>
-    public static byte[] MBFile(string rutaRelativa, long bytes, DateTime? modificado, DateTime? creado) => Escribir(new Dictionary<string, object?>
+    public static byte[] MBFile(string rutaRelativa, long bytes, DateTime? modificado, DateTime? creado) =>
+        MBFile(rutaRelativa, bytes, Unix(modificado), Unix(creado));
+
+    /// <summary>Con las fechas en segundos Unix tal cual, para probar valores danados.</summary>
+    public static byte[] MBFile(string rutaRelativa, long bytes, long modificado, long creado) => Escribir(new Dictionary<string, object?>
     {
         ["$version"] = 100000L,
         ["$archiver"] = "NSKeyedArchiver",
@@ -46,8 +50,8 @@ static class EscritorPlist
             {
                 ["RelativePath"] = new UidPlist(2),
                 ["Size"] = bytes,
-                ["LastModified"] = Unix(modificado),
-                ["Birth"] = Unix(creado),
+                ["LastModified"] = modificado,
+                ["Birth"] = creado,
                 ["Mode"] = 33188L,
                 ["$class"] = new UidPlist(3),
             },
