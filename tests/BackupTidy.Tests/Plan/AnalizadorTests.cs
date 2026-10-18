@@ -264,6 +264,20 @@ public sealed class AnalizadorTests : IDisposable
     }
 
     [Fact]
+    public void Un_JPG_reemplazado_solo_sale_si_entra_su_HEIC()
+    {
+        var heic = new FilaPlan(CategoriaPlan.Fotos, origen["IMG_0001.HEIC"], Destino("Fotos", "IMG_0001.HEIC"), 1);
+        var jpg = new FilaPlan(CategoriaPlan.JpgReemplazado, Destino("Fotos", "IMG_0001.JPG"), Destino("_jpg_reemplazados", "IMG_0001.JPG"), 1,
+                               Relacionado: heic.Origen);
+        var otra = new FilaPlan(CategoriaPlan.Fotos, origen["IMG_0002.JPG"], Destino("Fotos", "IMG_0002.JPG"), 1);
+
+        Assert.Equal([heic, jpg, otra], Analizador.SoloElegidas([heic, jpg, otra]));
+        // Sin el HEIC, el JPG se queda en lo organizado
+        Assert.Equal([otra], Analizador.SoloElegidas([jpg, otra]));
+        Assert.Equal([heic], Analizador.SoloElegidas([heic]));
+    }
+
+    [Fact]
     public void Carpeta_de_un_archivo_fuera_del_backup_es_la_ruta_completa()
     {
         var fuera = new FilaPlan(CategoriaPlan.JpgReemplazado, Destino("Fotos", "2019", "IMG_0001.JPG"), null, 1);

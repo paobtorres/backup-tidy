@@ -17,6 +17,11 @@
             <Setter Property="BorderBrush" Value="{DynamicResource Borde}" />
             <Setter Property="BorderThickness" Value="1" />
         </Style>
+        <!-- Solo la casilla, sin el ancho minimo que Fluent da a un CheckBox con texto -->
+        <Style Selector="CheckBox.eleccion">
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
         <Style Selector="ListBox.filas ListBoxItem">
             <Setter Property="Padding" Value="12,7" />
         </Style>
@@ -86,14 +91,20 @@
                          Background="Transparent">
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:CategoriaVista">
-                            <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
-                                <Ellipse Grid.RowSpan="2" Width="10" Height="10" Fill="{Binding Color}" Margin="0,5,10,0"
+                            <Grid ColumnDefinitions="Auto,Auto,*,Auto" RowDefinitions="Auto,Auto">
+                                <!-- Seleccionar la categoria entera para organizar -->
+                                <CheckBox Grid.RowSpan="2" Classes="eleccion" VerticalAlignment="Top" Margin="0,-6,4,0"
+                                          IsChecked="{Binding Eleccion, Mode=OneWay}"
+                                          Command="{Binding $parent[UserControl].((vm:RevisionViewModel)DataContext).ElegirCategoriaCommand}"
+                                          CommandParameter="{Binding}"
+                                          ToolTip.Tip="Seleccionar o quitar todos los archivos de la categoría" />
+                                <Ellipse Grid.Column="1" Grid.RowSpan="2" Width="10" Height="10" Fill="{Binding Color}" Margin="0,5,10,0"
                                          VerticalAlignment="Top" />
-                                <TextBlock Grid.Column="1" Text="{Binding Nombre}" FontWeight="SemiBold" />
-                                <TextBlock Grid.Column="2" Text="{Binding Cantidad}" FontWeight="SemiBold" Margin="8,0,0,0" />
-                                <TextBlock Grid.Row="1" Grid.Column="1" Classes="secundario" FontSize="12" Text="{Binding Descripcion}"
+                                <TextBlock Grid.Column="2" Text="{Binding Nombre}" FontWeight="SemiBold" />
+                                <TextBlock Grid.Column="3" Text="{Binding Cantidad}" FontWeight="SemiBold" Margin="8,0,0,0" />
+                                <TextBlock Grid.Row="1" Grid.Column="2" Classes="secundario" FontSize="12" Text="{Binding Descripcion}"
                                            TextWrapping="Wrap" />
-                                <TextBlock Grid.Row="1" Grid.Column="2" Classes="secundario" FontSize="12" Text="{Binding Tamano}"
+                                <TextBlock Grid.Row="1" Grid.Column="3" Classes="secundario" FontSize="12" Text="{Binding Tamano}"
                                            HorizontalAlignment="Right" Margin="8,0,0,0" />
                             </Grid>
                         </DataTemplate>
@@ -142,6 +153,13 @@
                                 </DataTemplate>
                             </ComboBox.ItemTemplate>
                         </ComboBox>
+                        <!-- Seleccion rapida de lo que se ve en la lista -->
+                        <Grid ColumnDefinitions="*,Auto">
+                            <CheckBox IsChecked="{Binding TodosVisiblesElegidos, Mode=OneWay}" Command="{Binding ElegirVisiblesCommand}"
+                                      Content="{Binding TextoTodosVisibles}" IsEnabled="{Binding HayFilas}" />
+                            <TextBlock Grid.Column="1" Classes="secundario" FontSize="12" Text="{Binding TextoSeleccion}"
+                                       VerticalAlignment="Center" Margin="12,0,0,0" />
+                        </Grid>
                     </StackPanel>
                     <Border DockPanel.Dock="Top" Height="1" Background="{DynamicResource Borde}" />
                     <Panel>
@@ -149,15 +167,17 @@
                                  Background="Transparent">
                             <ListBox.ItemTemplate>
                                 <DataTemplate x:DataType="vm:FilaVista">
-                                    <Grid ColumnDefinitions="Auto,*,Auto">
-                                        <Ellipse Width="8" Height="8" Fill="{Binding Color}" Margin="0,0,10,0" />
-                                        <StackPanel Grid.Column="1" Spacing="1">
+                                    <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                                        <CheckBox Classes="eleccion" IsChecked="{Binding Elegida}" Margin="0,0,4,0"
+                                                  AutomationProperties.Name="Seleccionar para organizar" />
+                                        <Ellipse Grid.Column="1" Width="8" Height="8" Fill="{Binding Color}" Margin="0,0,10,0" />
+                                        <StackPanel Grid.Column="2" Spacing="1">
                                             <TextBlock Text="{Binding Nombre}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                                             <TextBlock Classes="secundario" FontSize="12" TextTrimming="CharacterEllipsis">
                                                 <Run Text="→ " /><Run Text="{Binding Destino}" />
                                             </TextBlock>
                                         </StackPanel>
-                                        <StackPanel Grid.Column="2" Spacing="1" Margin="12,0,0,0" HorizontalAlignment="Right">
+                                        <StackPanel Grid.Column="3" Spacing="1" Margin="12,0,0,0" HorizontalAlignment="Right">
                                             <TextBlock Text="{Binding Fecha}" HorizontalAlignment="Right" FontSize="12" />
                                             <TextBlock Classes="secundario" Text="{Binding Tamano}" HorizontalAlignment="Right" FontSize="12" />
                                         </StackPanel>

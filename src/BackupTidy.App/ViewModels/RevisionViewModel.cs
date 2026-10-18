@@ -26,13 +26,25 @@ public partial class RevisionViewModel : ViewModelBase
     List<FilaVista> filtradas = [];
     bool armandoSubcarpetas;
 
+    // Las filas de cada categoria, para elegir o quitar una categoria entera
+    readonly Dictionary<CategoriaPlan, List<FilaVista>> porCategoria;
+
+    // Lo elegido que se va a organizar (sin los JPG cuyo HEIC no entra)
+    IReadOnlyList<FilaPlan> aOrganizar = [];
+    int moverElegidos, descartesElegidos;
+    long bytesAMover;
+
+    // Al elegir muchas filas juntas se recalcula una vez al final, no por cada fila
+    bool eligiendoVarias;
+
     public RevisionViewModel(MainViewModel principal, OpcionesAnalisis opciones, ResultadoAnalisis resultado)
     {
         this.principal = principal;
         this.opciones = opciones;
         plan = resultado.Filas;
         Avisos = resultado.Avisos;
-        filas = plan.Select(f => new FilaVista(f, opciones.Origen, opciones.Destino)).ToList();
+        filas = plan.Select(f => new FilaVista(f, opciones.Origen, opciones.Destino, AlCambiarEleccion)).ToList();
+        porCategoria = filas.GroupBy(f => f.Fila.Categoria).ToDictionary(g => g.Key, g => g.ToList());
         fotosLive = new(FotosLive);
         esperaBusqueda = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
         esperaBusqueda.Tick += (_, _) =>
@@ -41,16 +53,12 @@ public partial class RevisionViewModel : ViewModelBase
             Filtrar();
         };
 
-        var aMover = plan.Where(f => f.Categoria != CategoriaPlan.Descartar).ToList();
-        var descartes = plan.Where(f => f.Categoria == CategoriaPlan.Descartar).ToList();
-        ArchivosAMover = aMover.Count;
-        TextoAMover = $"{Formato.Cantidad(aMover.Count)} archivos · {Formato.Tamano(aMover.Sum(f => f.Bytes))}";
-        TextoDescartes = $"Enviar a la Papelera los {Formato.Cantidad(descartes.Count)} descartes ({Formato.Tamano(descartes.Sum(f => f.Bytes))})";
-        HayDescartes = descartes.Count > 0;
+        HayDescartes = plan.Any(f => f.Categoria == CategoriaPlan.Descartar);
         CantidadDudosas = plan.Count(f => f.FuenteFecha == FuenteFecha.ArchivoDudoso);
 
         Categorias = [new CategoriaVista(null, plan.Count, plan.Sum(f => f.Bytes)),
                       .. Analizador.Resumen(plan).Select(r => new CategoriaVista(r.Categoria, r.Archivos, r.Bytes))];
+        ActualizarEleccion();
         OpcionesDuplicados =
         [
             new(FiltroDuplicados.Todos, "Todos"),
@@ -71,11 +79,21 @@ public partial class RevisionViewModel : ViewModelBase
 
     public IReadOnlyList<CategoriaVista> Categorias { get; }
 
-    public int ArchivosAMover { get; }
+    /// <summary>Lo seleccionado que se mueve (sin los descartes): cantidad y tamano.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TextoConfirmacion))]
+    public partial string TextoAMover { get; set; } = "";
 
-    public string TextoAMover { get; }
+    [ObservableProperty]
+    public partial string TextoDescartes { get; set; } = "";
 
-    public string TextoDescartes { get; }
+    /// <summary>"1.234 de 25.000 archivos seleccionados".</summary>
+    [ObservableProperty]
+    public partial string TextoSeleccion { get; set; } = "";
+
+    /// <summary>Si estan seleccionados todos los de la lista (null: algunos).</summary>
+    [ObservableProperty]
+    public partial bool? TodosVisiblesElegidos { get; set; }
 
     public bool HayDescartes { get; }
 
@@ -106,8 +124,12 @@ public partial class RevisionViewModel : ViewModelBase
     public partial bool SoloDudosas { get; set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(SinFilas))]
+    [NotifyPropertyChangedFor(nameof(SinFilas), nameof(HayFilas), nameof(TextoTodosVisibles))]
     public partial IReadOnlyList<FilaVista> FilasVisibles { get; set; } = [];
+
+    public bool HayFilas => FilasVisibles.Count > 0;
+
+    public string TextoTodosVisibles => $"Seleccionar los {Formato.Cantidad(FilasVisibles.Count)} de la lista";
 
     public bool SinFilas => FilasVisibles.Count == 0;
 
@@ -121,6 +143,7 @@ public partial class RevisionViewModel : ViewModelBase
     public partial Bitmap? VistaRelacionado { get; set; }
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(PedirConfirmacionCommand))]
     public partial bool EnviarDescartesAPapelera { get; set; }
 
     [ObservableProperty]
@@ -130,8 +153,10 @@ public partial class RevisionViewModel : ViewModelBase
     public partial string? Mensaje { get; set; }
 
     public string TextoConfirmacion =>
-        $"Se van a mover {TextoAMover} a {Destino}. No se borra nada: cada movimiento queda registrado y se puede deshacer."
-        + (EnviarDescartesAPapelera ? " Los descartes van a la Papelera de reciclaje." : "");
+        $"Se van a mover los {Formato.Cantidad(moverElegidos)} archivos seleccionados ({Formato.Tamano(bytesAMover)}) a {Destino}; "
+        + "lo que no está seleccionado queda donde está. "
+        + "No se borra nada: cada movimiento queda registrado y se puede deshacer."
+        + (EnviarDescartesAPapelera ? " Los descartes seleccionados van a la Papelera de reciclaje." : "");
 
     partial void OnCategoriaSeleccionadaChanged(CategoriaVista? value) => Filtrar();
 
@@ -217,6 +242,58 @@ public partial class RevisionViewModel : ViewModelBase
             ? filtradas.Where(f => string.Equals(f.Carpeta, carpeta, StringComparison.OrdinalIgnoreCase)).ToList()
             : filtradas;
         Seleccionada = FilasVisibles.Count > 0 ? FilasVisibles[0] : null;
+        TodosVisiblesElegidos = Estado(FilasVisibles);
+    }
+
+    void AlCambiarEleccion()
+    {
+        if (!eligiendoVarias) ActualizarEleccion();
+    }
+
+    void Elegir(IReadOnlyList<FilaVista> cuales)
+    {
+        // Si ya estan todas se quitan; si falta alguna, se eligen todas
+        var elegir = Estado(cuales) != true;
+        eligiendoVarias = true;
+        foreach (var f in cuales) f.Elegida = elegir;
+        eligiendoVarias = false;
+        ActualizarEleccion();
+    }
+
+    // Todas elegidas: true; ninguna: false; algunas: null
+    static bool? Estado(IReadOnlyCollection<FilaVista> cuales)
+    {
+        var elegidas = cuales.Count(f => f.Elegida);
+        return elegidas == cuales.Count && elegidas > 0 ? true : elegidas == 0 ? false : null;
+    }
+
+    void ActualizarEleccion()
+    {
+        aOrganizar = Analizador.SoloElegidas(filas.Where(f => f.Elegida).Select(f => f.Fila));
+        var mover = aOrganizar.Where(f => f.Categoria != CategoriaPlan.Descartar).ToList();
+        var descartes = aOrganizar.Where(f => f.Categoria == CategoriaPlan.Descartar).ToList();
+        moverElegidos = mover.Count;
+        bytesAMover = mover.Sum(f => f.Bytes);
+        descartesElegidos = descartes.Count;
+
+        TextoAMover = $"{Formato.Cantidad(moverElegidos)} archivos · {Formato.Tamano(bytesAMover)}";
+        TextoDescartes = $"Enviar a la Papelera los {Formato.Cantidad(descartes.Count)} descartes seleccionados ({Formato.Tamano(descartes.Sum(f => f.Bytes))})";
+        TextoSeleccion = $"{Formato.Cantidad(filas.Count(f => f.Elegida))} de {Formato.Cantidad(filas.Count)} archivos seleccionados";
+        foreach (var c in Categorias)
+            c.Eleccion = Estado(c.Categoria is CategoriaPlan cat ? porCategoria[cat] : filas);
+        TodosVisiblesElegidos = Estado(FilasVisibles);
+        PedirConfirmacionCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>Selecciona (o quita, si ya estan todos) los archivos de la lista, con los filtros que tenga.</summary>
+    [RelayCommand]
+    void ElegirVisibles() => Elegir(FilasVisibles);
+
+    /// <summary>Selecciona (o quita) una categoria entera; "Todo" es todo el plan.</summary>
+    [RelayCommand]
+    void ElegirCategoria(CategoriaVista? categoria)
+    {
+        if (categoria is not null) Elegir(categoria.Categoria is CategoriaPlan c ? porCategoria[c] : filas);
     }
 
     [RelayCommand]
@@ -244,18 +321,21 @@ public partial class RevisionViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
+    // Hay algo que hacer: archivos para mover, o descartes si van a la Papelera
+    bool HayAlgoElegido => moverElegidos > 0 || EnviarDescartesAPapelera && descartesElegidos > 0;
+
+    [RelayCommand(CanExecute = nameof(HayAlgoElegido))]
     void PedirConfirmacion() => Confirmando = true;
 
     [RelayCommand]
     void CancelarConfirmacion() => Confirmando = false;
 
     [RelayCommand]
-    Task Organizar() => principal.Organizar(plan, Origen, Destino, EnviarDescartesAPapelera);
+    Task Organizar() => principal.Organizar(aOrganizar, Origen, Destino, EnviarDescartesAPapelera);
 }
 
 /// <summary>Una categoria en el resumen; sin categoria es "Todo".</summary>
-public sealed class CategoriaVista(CategoriaPlan? categoria, int archivos, long bytes)
+public sealed partial class CategoriaVista(CategoriaPlan? categoria, int archivos, long bytes) : ObservableObject
 {
     static readonly Dictionary<CategoriaPlan, string> Colores = new()
     {
@@ -285,7 +365,13 @@ public sealed class CategoriaVista(CategoriaPlan? categoria, int archivos, long 
 
     public string Tamano { get; } = Formato.Tamano(bytes);
 
-    public IBrush Color { get; } = new ImmutableSolidColorBrush(Avalonia.Media.Color.Parse(
+    public IBrush Color { get; } = ColorDe(categoria);
+
+    /// <summary>Si sus archivos estan seleccionados para organizar: todos, ninguno o algunos (null).</summary>
+    [ObservableProperty]
+    public partial bool? Eleccion { get; set; }
+
+    public static IBrush ColorDe(CategoriaPlan? categoria) => new ImmutableSolidColorBrush(Avalonia.Media.Color.Parse(
         categoria is CategoriaPlan c ? Colores.GetValueOrDefault(c, "#9AA3AE") : "#7D8794"));
 }
 
@@ -341,18 +427,27 @@ public sealed class SubcarpetaVista(string? carpeta, int archivos, long bytes)
 }
 
 /// <summary>Una fila del plan preparada para mostrar.</summary>
-public sealed class FilaVista
+public sealed partial class FilaVista : ObservableObject
 {
-    public FilaVista(FilaPlan fila, string origen, string destino)
+    readonly Action? alCambiarEleccion;
+
+    public FilaVista(FilaPlan fila, string origen, string destino, Action? alCambiarEleccion = null)
     {
+        this.alCambiarEleccion = alCambiarEleccion;
         Fila = fila;
         Nombre = Path.GetFileName(fila.Origen);
         Carpeta = Analizador.CarpetaDe(fila, origen);
         Destino = fila.Destino is null ? "Queda en su lugar" : Relativa(destino, fila.Destino) ?? fila.Destino;
-        Color = new CategoriaVista(fila.Categoria, 0, 0).Color;
+        Color = CategoriaVista.ColorDe(fila.Categoria);
     }
 
     public FilaPlan Fila { get; }
+
+    /// <summary>Seleccionado para organizar. Al empezar esta todo seleccionado, como el plan completo.</summary>
+    [ObservableProperty]
+    public partial bool Elegida { get; set; } = true;
+
+    partial void OnElegidaChanged(bool value) => alCambiarEleccion?.Invoke();
 
     public string Nombre { get; }
 

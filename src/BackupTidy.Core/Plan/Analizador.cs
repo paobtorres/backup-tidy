@@ -174,6 +174,18 @@ public static class Analizador
              .ToList();
 
     /// <summary>
+    /// Lo que se organiza cuando se eligen solo algunas filas del plan. Un JPG ya organizado sale a revision
+    /// solo si entra el HEIC que lo reemplaza: si no, la foto desapareceria de lo organizado.
+    /// </summary>
+    public static IReadOnlyList<FilaPlan> SoloElegidas(IEnumerable<FilaPlan> elegidas)
+    {
+        var lista = elegidas.ToList();
+        var entran = lista.Select(f => f.Origen).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return lista.Where(f => f.Categoria != CategoriaPlan.JpgReemplazado || f.Relacionado is string heic && entran.Contains(heic))
+                    .ToList();
+    }
+
+    /// <summary>
     /// Carpeta del archivo relativa al backup ("" si esta en la raiz). Si esta fuera del backup (un JPG ya
     /// organizado que reemplaza su HEIC) es la ruta completa.
     /// </summary>
