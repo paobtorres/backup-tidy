@@ -22,6 +22,13 @@
                             <TextBox Text="{Binding Origen}" PlaceholderText="Por ejemplo D:\05_archive\backup_celulares" />
                             <Button Grid.Column="1" Content="Elegir…" Margin="8,0,0,0" Command="{Binding ElegirOrigenCommand}" />
                         </Grid>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Classes="secundario" Text="¿Tienes una copia de seguridad de iTunes?" VerticalAlignment="Center" />
+                            <Button Classes="enlace" Content="Sacar las fotos de la copia…" Command="{Binding ImportarItunesCommand}" />
+                        </StackPanel>
+                        <Border Classes="info" IsVisible="{Binding Aviso, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <TextBlock TextWrapping="Wrap" Text="{Binding Aviso}" />
+                        </Border>
                     </StackPanel>
 
                     <StackPanel Spacing="6">

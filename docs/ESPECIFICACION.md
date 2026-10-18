@@ -127,18 +127,53 @@ FoneLab puede exportar HEIC convertidos a JPG (no son identicos por hash). Clave
 - Ejecutar + deshacer sobre 2.456 archivos reales: inventario (ruta, tamano, fecha, MD5) identico.
 - Un restore del iPhone reinicio el carrete: un backup nuevo NO contiene necesariamente las fotos viejas.
 - Backup de iTunes: un solo backup por dispositivo (carpeta = UDID); el nuevo reemplaza al anterior.
-- `Manifest.db` (SQLite) indica que archivo es cada foto en backups **no cifrados** -> fase 2:
-  leer backups de iTunes directamente sin FoneLab.
+- `Manifest.db` (SQLite) indica que archivo es cada foto en backups **no cifrados**: ver abajo.
+
+## Copias de iTunes
+
+Se leen directamente, sin FoneLab ni iMazing: se **copian** (no se mueven) a una carpeta comun con su
+nombre y fecha reales, y esa carpeta sigue el flujo normal. La copia de iTunes no se modifica.
+
+- Ubicacion: `%APPDATA%\Apple Computer\MobileSync\Backup\<UDID>` (instalador de Apple) o
+  `%USERPROFILE%\Apple\MobileSync\Backup\<UDID>` (Microsoft Store).
+- `Manifest.plist` (plist **binario**): `Lockdown.DeviceName`, `Lockdown.ProductVersion`, `Date`, `IsEncrypted`.
+- `Manifest.db`, tabla `Files (fileID, domain, relativePath, flags, file)`: `flags = 1` son archivos.
+  Cada uno esta en `<copia>\<fileID[0..2]>\<fileID>` (`fileID` = SHA1 de `dominio-ruta`). Se abre en
+  solo lectura con `immutable=1`: ni bloqueos ni archivos `-wal`/`-shm` en la copia.
+- `file` es un NSKeyedArchiver (MBFile) con `LastModified` y `Birth` en segundos Unix: son las fechas que
+  se ponen a la copia. Sin eso todo tendria la fecha de la extraccion y caeria en `_fecha_dudosa`.
+- Cifradas (`IsEncrypted`): todavia no. iOS 9 o anterior (`Manifest.mbdb`): todavia no.
+
+| Que | Dominio y ruta | Sale como |
+|---|---|---|
+| Carrete | `CameraRollDomain` `Media/DCIM/<carpeta>/<archivo>` | `DCIM\<carpeta>\<archivo>` |
+| Editadas | `CameraRollDomain` `Media/PhotoData/Mutations/DCIM/<carpeta>/IMG_1234/Adjustments/FullSizeRender.<ext>` | `DCIM\<carpeta>\IMG_1234_editada.<ext>` |
+| WhatsApp | `AppDomainGroup-group.net.whatsapp.WhatsApp[SMB].shared` `Message/Media/<chat>/../<uuid>.<ext>` | `WhatsApp[ Business]\<uuid>.<ext>` |
+
+Solo fotos y videos segun la tabla de tipos. Lo demas no se extrae: `.AAE`, miniaturas y derivados de
+Fotos (`PhotoData/Thumbnails`, `UBF`), `Adjustments/IMG_1234.JPG`, en WhatsApp los `.webp` (stickers),
+`.opus`, `.thumb`, fondos (`Library/WallpaperV3`) y fotos de perfil (`Media/Profile`). Nombres repetidos
+en la salida -> `nombre_2.ext`.
+
+**Ojo con las editadas:** al editar un **video**, Fotos guarda `FullSizeRender.mov` **y** un
+`FullSizeRender.jpg` con un cuadro. Ese JPG al lado del video lo haria pasar por Live Photo. La imagen
+editada solo se extrae si el original en `DCIM` es una foto (una Live Photo editada trae `.heic` + `.mov`).
+
+Copia real (iPhone 14 Pro, iOS 26.5.2, 77,7 GB, 119.319 archivos): carrete 6.412 (45,9 GB), editadas 466
+(3,1 GB; 23 cuadros de videos descartados), WhatsApp 15.604 (12,2 GB, de 73.695 archivos en `Message/Media`).
+Indice leido en ~5 s. Analizada una muestra extraida: 0 fechas dudosas; los duplicados encontrados eran reales
+(la misma foto reenviada a dos chats, dos videos identicos).
 
 ## Roadmap
 
 **MVP (Windows):** elegir origen/destino -> analizar (progreso, cancelar) -> resumen + revision
 visual (miniaturas, duplicados lado a lado, fechas dudosas) -> ejecutar -> deshacer.
 
-**Fase 2:** leer backups de iTunes directamente; fotos similares (hash perceptual); reemplazo
-HEIC/JPG asistido; firma de codigo e instalador para distribuir; macOS.
+**Fase 2:** ~~leer backups de iTunes directamente~~ (hecho, sin cifrar); copias cifradas; fotos similares
+(hash perceptual); reemplazo HEIC/JPG asistido; firma de codigo e instalador para distribuir; macOS.
 
 ## Stack elegido
 
-C# / .NET 10 + Avalonia UI (multiplataforma) + MetadataExtractor (EXIF/HEIC/QuickTime/RAW).
+C# / .NET 10 + Avalonia UI (multiplataforma) + MetadataExtractor (EXIF/HEIC/QuickTime/RAW)
++ Microsoft.Data.Sqlite (Manifest.db de las copias de iTunes).
 Publicacion como un unico `.exe` (`dotnet publish -r win-x64 --self-contained -p:PublishSingleFile=true`).

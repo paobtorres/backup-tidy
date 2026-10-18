@@ -21,6 +21,21 @@ queda registrado y se puede deshacer.
    las Live Photos muestran su foto en lugar del video.
 4. **Resultado**: mueve, muestra lo hecho y permite deshacer.
 
+### Copias de seguridad de iTunes
+
+En el paso 1, "Sacar las fotos de la copia…" lee la copia que iTunes (o la app Dispositivos de Apple)
+guarda en `%APPDATA%\Apple Computer\MobileSync\Backup`, o cualquier carpeta con `Manifest.db`.
+Copia a una carpeta nueva, con su nombre y fecha reales:
+
+- **Carrete**: fotos y videos originales (`DCIM`), con las Live Photos.
+- **Versiones editadas**: lo editado en el iPhone, al lado del original como `IMG_1234_editada`.
+- **WhatsApp**: fotos y videos de los chats, sin stickers ni notas de voz.
+
+Esa carpeta se analiza y organiza como cualquier backup. La copia de iTunes no se modifica. Como hay
+que copiar (no mover), hace falta espacio libre en el disco de la carpeta organizada. Si se cancela o
+se llena el disco, volver a copiar sigue desde donde quedó. Todavía no se leen copias encriptadas
+(con contraseña) ni de iOS 9 o anterior.
+
 El plan y el registro de movimientos de cada organización quedan en `<carpeta organizada>\_reportes\`.
 Con ese registro se puede deshacer más tarde ("Deshacer una organización anterior" en el primer paso).
 
@@ -44,7 +59,7 @@ puede avisar ("Más información" → "Ejecutar de todas formas").
 
 ```
 BackupTidy.slnx
-src/BackupTidy.Core    motor: clasificacion, fechas, duplicados, plan, ejecucion y deshacer (sin UI)
+src/BackupTidy.Core    motor: clasificacion, fechas, duplicados, plan, ejecucion, deshacer y copias de iTunes (sin UI)
 src/BackupTidy.App     interfaz de escritorio (Avalonia + CommunityToolkit.Mvvm)
 src/BackupTidy.Cli     linea de comandos para correr el motor sobre carpetas reales y validarlo
 tests/BackupTidy.Tests pruebas del motor (xUnit)
@@ -55,4 +70,6 @@ dotnet build
 dotnet test
 dotnet run --project src/BackupTidy.App
 dotnet run --project src/BackupTidy.Cli -- analizar --origen <backup> --destino <organizado> --plan plan.csv
+dotnet run --project src/BackupTidy.Cli -- copias-itunes
+dotnet run --project src/BackupTidy.Cli -- extraer-itunes --copia <copia> --salida <carpeta> [--contenido carrete,editadas,whatsapp]
 ```

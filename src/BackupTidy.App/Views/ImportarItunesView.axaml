@@ -1,0 +1,106 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BackupTidy.App.ViewModels"
+             x:Class="BackupTidy.App.Views.ImportarItunesView"
+             x:DataType="vm:ImportarItunesViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="ListBox.copias ListBoxItem">
+            <Setter Property="Padding" Value="12,9" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Margin" Value="0,1" />
+        </Style>
+    </UserControl.Styles>
+
+    <ScrollViewer>
+        <StackPanel MaxWidth="760" Margin="28,36" Spacing="20">
+            <StackPanel Spacing="6">
+                <Button Classes="enlace" Content="← Volver a las carpetas" Command="{Binding VolverCommand}"
+                        IsEnabled="{Binding !Extrayendo}" />
+                <TextBlock Classes="titulo" Text="Sacar las fotos de una copia de iTunes" />
+                <TextBlock Classes="secundario" TextWrapping="Wrap"
+                           Text="Se copian con su nombre y fecha a una carpeta, que después analizas como cualquier backup. La copia de iTunes no se modifica." />
+            </StackPanel>
+
+            <Border Classes="tarjeta">
+                <StackPanel Spacing="22">
+                    <!-- Que copia -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="subtitulo" Text="Copia de seguridad" />
+                        <TextBlock Classes="secundario" Text="Buscando copias…" IsVisible="{Binding Buscando}" />
+                        <TextBlock Classes="secundario" TextWrapping="Wrap" IsVisible="{Binding SinCopias}"
+                                   Text="No se encontraron copias en las carpetas de iTunes. Si la copia está en otro lado (un disco externo, por ejemplo), elige su carpeta: es la que tiene Manifest.db." />
+                        <ListBox Classes="copias" ItemsSource="{Binding Copias}" SelectedItem="{Binding Seleccionada}"
+                                 Background="Transparent" IsEnabled="{Binding !Extrayendo}"
+                                 IsVisible="{Binding HayCopias}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:CopiaVista">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="{Binding Nombre}" FontWeight="SemiBold" />
+                                        <TextBlock Classes="secundario" FontSize="12" Text="{Binding Detalle}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <Button Classes="enlace" Content="Elegir otra carpeta…" Command="{Binding ElegirCopiaCommand}"
+                                IsEnabled="{Binding !Extrayendo}" />
+                    </StackPanel>
+
+                    <!-- Que se saca -->
+                    <StackPanel Spacing="8" IsVisible="{Binding HayCopia}">
+                        <TextBlock Classes="subtitulo" Text="Qué sacar" />
+                        <TextBlock Classes="secundario" Text="Leyendo el índice de la copia…" IsVisible="{Binding Leyendo}" />
+                        <ItemsControl ItemsSource="{Binding Contenidos}" IsEnabled="{Binding !Extrayendo}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ContenidoVista">
+                                    <CheckBox IsChecked="{Binding Incluir}" IsEnabled="{Binding HayArchivos}" Margin="0,2">
+                                        <StackPanel Spacing="1">
+                                            <TextBlock Text="{Binding Nombre}" FontWeight="SemiBold" />
+                                            <TextBlock Classes="secundario" FontSize="12" Text="{Binding Descripcion}" TextWrapping="Wrap" />
+                                            <TextBlock FontSize="12" Text="{Binding Resumen}" IsVisible="{Binding HayArchivos}" />
+                                        </StackPanel>
+                                    </CheckBox>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <!-- Adonde -->
+                    <StackPanel Spacing="6" IsVisible="{Binding HayCopia}">
+                        <TextBlock Classes="subtitulo" Text="Dónde copiarlas" />
+                        <TextBlock Classes="secundario" TextWrapping="Wrap"
+                                   Text="Una carpeta nueva en el mismo disco que la carpeta organizada. Después de organizar queda vacía." />
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                            <TextBox Text="{Binding Salida}" PlaceholderText="Por ejemplo D:\05_archive\iPhone 2026-10-12"
+                                     IsEnabled="{Binding !Extrayendo}" />
+                            <Button Grid.Column="1" Content="Elegir…" Margin="8,0,0,0" Command="{Binding ElegirSalidaCommand}"
+                                    IsEnabled="{Binding !Extrayendo}" />
+                        </Grid>
+                        <TextBlock Classes="secundario" FontSize="12" Text="{Binding TextoEspacio}"
+                                   IsVisible="{Binding TextoEspacio, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                        <TextBlock Classes="error" Text="{Binding ErrorSalida}"
+                                   IsVisible="{Binding ErrorSalida, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    </StackPanel>
+
+                    <TextBlock Classes="error" Text="{Binding Error}" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+                    <StackPanel Spacing="8" IsVisible="{Binding Extrayendo}">
+                        <ProgressBar Height="8" Minimum="0" Maximum="100" Value="{Binding Porcentaje}" />
+                        <TextBlock Classes="secundario" Text="{Binding Detalle}" />
+                    </StackPanel>
+
+                    <Grid ColumnDefinitions="*,Auto,Auto" IsVisible="{Binding HayCopia}">
+                        <Border Classes="info" VerticalAlignment="Center">
+                            <TextBlock TextWrapping="Wrap"
+                                       Text="Solo se copia: si cancelas, lo copiado queda y la próxima vez sigue desde ahí." />
+                        </Border>
+                        <Button Grid.Column="1" Content="Cancelar" Margin="16,0,0,0" Command="{Binding CancelarCommand}"
+                                IsVisible="{Binding Extrayendo}" />
+                        <Button Grid.Column="2" Classes="accent grande" Margin="12,0,0,0" Content="Copiar fotos"
+                                Command="{Binding ExtraerCommand}" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -25,6 +25,10 @@ public partial class CarpetasViewModel(MainViewModel principal) : ViewModelBase
     [ObservableProperty]
     public partial string? ErrorAnalisis { get; set; }
 
+    /// <summary>Lo que dejo hecho otro paso, por ejemplo la extraccion de una copia de iTunes.</summary>
+    [ObservableProperty]
+    public partial string? Aviso { get; set; }
+
     /// <summary>Problema con las carpetas elegidas, o null si se puede analizar (o falta elegir).</summary>
     public string? Error
     {
@@ -68,10 +72,17 @@ public partial class CarpetasViewModel(MainViewModel principal) : ViewModelBase
     [RelayCommand(CanExecute = nameof(PuedeAnalizar))]
     Task Analizar()
     {
-        ErrorAnalisis = null;
+        ErrorAnalisis = Aviso = null;
         // Si el destino todavia no existe no hay nada con que comparar
         var compararCon = CompararConDestino && Directory.Exists(Destino) ? new[] { Destino } : null;
         return principal.Analizar(new OpcionesAnalisis(Origen, Destino, compararCon));
+    }
+
+    [RelayCommand]
+    void ImportarItunes()
+    {
+        Aviso = null;
+        principal.IrA(new ImportarItunesViewModel(principal), 1);
     }
 
     [RelayCommand]

@@ -8,6 +8,7 @@
     <!-- Cada paso tiene su vista -->
     <Application.DataTemplates>
         <DataTemplate DataType="vm:CarpetasViewModel"><v:CarpetasView /></DataTemplate>
+        <DataTemplate DataType="vm:ImportarItunesViewModel"><v:ImportarItunesView /></DataTemplate>
         <DataTemplate DataType="vm:AnalisisViewModel"><v:AnalisisView /></DataTemplate>
         <DataTemplate DataType="vm:RevisionViewModel"><v:RevisionView /></DataTemplate>
         <DataTemplate DataType="vm:ResultadoViewModel"><v:ResultadoView /></DataTemplate>
