@@ -11,8 +11,19 @@ queda registrado y se puede deshacer.
 
 1. **Carpetas**: el backup a organizar y la carpeta organizada (en el mismo disco).
 2. **Análisis**: solo lee; se puede cancelar.
-3. **Revisión**: resumen por categoría, lista de archivos con su destino y fecha, vista previa
-   (los duplicados lado a lado con la copia que se conserva). Se puede guardar el plan en CSV.
+3. **Revisión**: lista de archivos con su destino y fecha, y vista previa (los duplicados lado a lado
+   con la copia que se conserva).
+   - **Filtros**: por categoría o por subcarpeta (pestañas del menú de la izquierda), **Todos /
+     Duplicados / Sin duplicar** (cada uno con su cantidad y tamaño), subcarpeta (el desplegable
+     muestra los archivos y GB de cada una), búsqueda y fechas dudosas.
+   - **Selección**: al empezar está todo seleccionado. Cada archivo tiene su casilla;
+     "Seleccionar los N de la lista" selecciona o quita lo que se ve con los filtros, y la casilla de
+     cada categoría o subcarpeta del menú la selecciona o quita entera. A medias, la casilla
+     selecciona todo.
+   - **Organizar** mueve solo lo seleccionado; lo demás queda donde está. Un JPG ya organizado sale a
+     revisión solo si entra el HEIC que lo reemplaza. "Guardar plan (CSV)" guarda lo mismo que se va
+     a organizar.
+
    JPG, PNG, GIF, BMP y WebP se muestran siempre, ya derechos según la orientación EXIF. HEIC, RAW,
    TIFF y videos usan la miniatura de Windows (la misma del Explorador), así que dependen de los
    códecs instalados: [HEIF](https://apps.microsoft.com/detail/9pmmsr1cgpwg),
@@ -59,10 +70,11 @@ puede avisar ("Más información" → "Ejecutar de todas formas").
 
 ```
 BackupTidy.slnx
-src/BackupTidy.Core    motor: clasificacion, fechas, duplicados, plan, ejecucion, deshacer y copias de iTunes (sin UI)
-src/BackupTidy.App     interfaz de escritorio (Avalonia + CommunityToolkit.Mvvm)
-src/BackupTidy.Cli     linea de comandos para correr el motor sobre carpetas reales y validarlo
-tests/BackupTidy.Tests pruebas del motor (xUnit)
+src/BackupTidy.Core         motor: clasificacion, fechas, duplicados, plan, ejecucion, deshacer y copias de iTunes (sin UI)
+src/BackupTidy.App          interfaz de escritorio (Avalonia + CommunityToolkit.Mvvm)
+src/BackupTidy.Cli          linea de comandos para correr el motor sobre carpetas reales y validarlo
+tests/BackupTidy.Tests      pruebas del motor (xUnit)
+tests/BackupTidy.App.Tests  pruebas de las pantallas (xUnit + Avalonia headless, sin abrir ventanas)
 ```
 
 ```

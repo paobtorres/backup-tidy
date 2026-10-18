@@ -10,6 +10,13 @@
             <Setter Property="CornerRadius" Value="8" />
             <Setter Property="Margin" Value="0,1" />
         </Style>
+        <!-- Pestanas del menu: del tamano del texto, no el titulo grande de Fluent -->
+        <Style Selector="TabControl.menu TabItem">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="Padding" Value="8,0" />
+        </Style>
         <Style Selector="ListBox.segmentos ListBoxItem">
             <Setter Property="Padding" Value="10,6" />
             <Setter Property="CornerRadius" Value="8" />
@@ -76,7 +83,8 @@
             <DockPanel Margin="0,0,16,0">
                 <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="4,0,0,12">
                     <TextBlock Classes="titulo" Text="Revisa el plan" />
-                    <TextBlock Classes="secundario" Text="Elige una categoría para ver sus archivos." TextWrapping="Wrap" />
+                    <TextBlock Classes="secundario" TextWrapping="Wrap"
+                               Text="Elige una categoría o una subcarpeta para ver sus archivos; con la casilla la seleccionas entera." />
                 </StackPanel>
                 <Border DockPanel.Dock="Bottom" Classes="aviso" Margin="0,12,0,0" IsVisible="{Binding HayAvisos}">
                     <ItemsControl ItemsSource="{Binding Avisos}">
@@ -87,29 +95,52 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </Border>
-                <ListBox Classes="categorias" ItemsSource="{Binding Categorias}" SelectedItem="{Binding CategoriaSeleccionada}"
-                         Background="Transparent">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate x:DataType="vm:CategoriaVista">
-                            <Grid ColumnDefinitions="Auto,Auto,*,Auto" RowDefinitions="Auto,Auto">
-                                <!-- Seleccionar la categoria entera para organizar -->
-                                <CheckBox Grid.RowSpan="2" Classes="eleccion" VerticalAlignment="Top" Margin="0,-6,4,0"
-                                          IsChecked="{Binding Eleccion, Mode=OneWay}"
-                                          Command="{Binding $parent[UserControl].((vm:RevisionViewModel)DataContext).ElegirCategoriaCommand}"
-                                          CommandParameter="{Binding}"
-                                          ToolTip.Tip="Seleccionar o quitar todos los archivos de la categoría" />
-                                <Ellipse Grid.Column="1" Grid.RowSpan="2" Width="10" Height="10" Fill="{Binding Color}" Margin="0,5,10,0"
-                                         VerticalAlignment="Top" />
-                                <TextBlock Grid.Column="2" Text="{Binding Nombre}" FontWeight="SemiBold" />
-                                <TextBlock Grid.Column="3" Text="{Binding Cantidad}" FontWeight="SemiBold" Margin="8,0,0,0" />
-                                <TextBlock Grid.Row="1" Grid.Column="2" Classes="secundario" FontSize="12" Text="{Binding Descripcion}"
-                                           TextWrapping="Wrap" />
-                                <TextBlock Grid.Row="1" Grid.Column="3" Classes="secundario" FontSize="12" Text="{Binding Tamano}"
-                                           HorizontalAlignment="Right" Margin="8,0,0,0" />
-                            </Grid>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
+                <TabControl Classes="menu" Padding="0">
+                    <TabItem Header="Categorías">
+                        <ListBox Classes="categorias" ItemsSource="{Binding Categorias}" SelectedItem="{Binding CategoriaSeleccionada}"
+                                 Background="Transparent">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:CategoriaVista">
+                                    <Grid ColumnDefinitions="Auto,Auto,*,Auto" RowDefinitions="Auto,Auto">
+                                        <!-- Seleccionar la categoria entera para organizar -->
+                                        <CheckBox Grid.RowSpan="2" Classes="eleccion" VerticalAlignment="Top" Margin="0,-6,4,0"
+                                                  IsChecked="{Binding Eleccion, Mode=OneWay}"
+                                                  Command="{Binding $parent[UserControl].((vm:RevisionViewModel)DataContext).ElegirCategoriaCommand}"
+                                                  CommandParameter="{Binding}"
+                                                  ToolTip.Tip="Seleccionar o quitar todos los archivos de la categoría" />
+                                        <Ellipse Grid.Column="1" Grid.RowSpan="2" Width="10" Height="10" Fill="{Binding Color}" Margin="0,5,10,0"
+                                                 VerticalAlignment="Top" />
+                                        <TextBlock Grid.Column="2" Text="{Binding Nombre}" FontWeight="SemiBold" />
+                                        <TextBlock Grid.Column="3" Text="{Binding Cantidad}" FontWeight="SemiBold" Margin="8,0,0,0" />
+                                        <TextBlock Grid.Row="1" Grid.Column="2" Classes="secundario" FontSize="12" Text="{Binding Descripcion}"
+                                                   TextWrapping="Wrap" />
+                                        <TextBlock Grid.Row="1" Grid.Column="3" Classes="secundario" FontSize="12" Text="{Binding Tamano}"
+                                                   HorizontalAlignment="Right" Margin="8,0,0,0" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </TabItem>
+                    <TabItem Header="Subcarpetas">
+                        <ListBox Classes="categorias" ItemsSource="{Binding CarpetasDelBackup}"
+                                 SelectedItem="{Binding CarpetaDelBackupSeleccionada}" Background="Transparent">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:SubcarpetaVista">
+                                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+                                        <!-- Seleccionar la subcarpeta entera, con todas sus categorias -->
+                                        <CheckBox Grid.RowSpan="2" Classes="eleccion" VerticalAlignment="Top" Margin="0,-6,4,0"
+                                                  IsChecked="{Binding Eleccion, Mode=OneWay}"
+                                                  Command="{Binding $parent[UserControl].((vm:RevisionViewModel)DataContext).ElegirCarpetaCommand}"
+                                                  CommandParameter="{Binding}"
+                                                  ToolTip.Tip="Seleccionar o quitar todos los archivos de la subcarpeta" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Nombre}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                        <TextBlock Grid.Row="1" Grid.Column="1" Classes="secundario" FontSize="12" Text="{Binding Resumen}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </TabItem>
+                </TabControl>
             </DockPanel>
 
             <!-- Lista de archivos -->

@@ -5,6 +5,7 @@
     <Project Path="src/BackupTidy.Core/BackupTidy.Core.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/BackupTidy.App.Tests/BackupTidy.App.Tests.csproj" />
     <Project Path="tests/BackupTidy.Tests/BackupTidy.Tests.csproj" />
   </Folder>
 </Solution>

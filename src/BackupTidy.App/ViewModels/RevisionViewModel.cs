@@ -26,8 +26,12 @@ public partial class RevisionViewModel : ViewModelBase
     List<FilaVista> filtradas = [];
     bool armandoSubcarpetas;
 
-    // Las filas de cada categoria, para elegir o quitar una categoria entera
+    // Las filas de cada categoria y de cada subcarpeta, para elegir o quitar una entera
     readonly Dictionary<CategoriaPlan, List<FilaVista>> porCategoria;
+    readonly Dictionary<string, List<FilaVista>> porCarpeta;
+
+    // Al elegir una subcarpeta en el menu se elige en la lista, y al reves: evita que se llamen entre si
+    bool sincronizandoCarpeta;
 
     // Lo elegido que se va a organizar (sin los JPG cuyo HEIC no entra)
     IReadOnlyList<FilaPlan> aOrganizar = [];
@@ -45,6 +49,10 @@ public partial class RevisionViewModel : ViewModelBase
         Avisos = resultado.Avisos;
         filas = plan.Select(f => new FilaVista(f, opciones.Origen, opciones.Destino, AlCambiarEleccion)).ToList();
         porCategoria = filas.GroupBy(f => f.Fila.Categoria).ToDictionary(g => g.Key, g => g.ToList());
+        porCarpeta = filas.GroupBy(f => f.Carpeta, StringComparer.OrdinalIgnoreCase)
+                          .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+        CarpetasDelBackup = Analizador.ResumenPorCarpeta(plan, opciones.Origen)
+                                      .Select(r => new SubcarpetaVista(r.Carpeta, r.Archivos, r.Bytes)).ToList();
         fotosLive = new(FotosLive);
         esperaBusqueda = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
         esperaBusqueda.Tick += (_, _) =>
@@ -78,6 +86,9 @@ public partial class RevisionViewModel : ViewModelBase
     public bool HayAvisos => Avisos.Count > 0;
 
     public IReadOnlyList<CategoriaVista> Categorias { get; }
+
+    /// <summary>Todas las filas del plan, sin filtros (para las pruebas).</summary>
+    internal IReadOnlyList<FilaVista> TodasLasFilas => filas;
 
     /// <summary>Lo seleccionado que se mueve (sin los descartes): cantidad y tamano.</summary>
     [ObservableProperty]
@@ -116,6 +127,13 @@ public partial class RevisionViewModel : ViewModelBase
 
     [ObservableProperty]
     public partial SubcarpetaVista? SubcarpetaSeleccionada { get; set; }
+
+    /// <summary>Todas las subcarpetas del backup, con todos sus archivos: para seleccionarlas enteras desde el menu.</summary>
+    public IReadOnlyList<SubcarpetaVista> CarpetasDelBackup { get; }
+
+    /// <summary>La subcarpeta elegida en el menu: es la misma que se ve en la lista.</summary>
+    [ObservableProperty]
+    public partial SubcarpetaVista? CarpetaDelBackupSeleccionada { get; set; }
 
     [ObservableProperty]
     public partial string Busqueda { get; set; } = "";
@@ -173,8 +191,33 @@ public partial class RevisionViewModel : ViewModelBase
 
     partial void OnSubcarpetaSeleccionadaChanged(SubcarpetaVista? value)
     {
+        if (!sincronizandoCarpeta)
+        {
+            sincronizandoCarpeta = true;
+            CarpetaDelBackupSeleccionada = value?.Carpeta is string carpeta
+                ? CarpetasDelBackup.FirstOrDefault(c => string.Equals(c.Carpeta, carpeta, StringComparison.OrdinalIgnoreCase))
+                : null;
+            sincronizandoCarpeta = false;
+        }
         if (!armandoSubcarpetas) MostrarSubcarpeta();
     }
+
+    // Elegir una subcarpeta en el menu la muestra en la lista; si los filtros la dejan vacia, se vuelve a ver todo
+    partial void OnCarpetaDelBackupSeleccionadaChanged(SubcarpetaVista? value)
+    {
+        if (sincronizandoCarpeta || value?.Carpeta is not string carpeta) return;
+        sincronizandoCarpeta = true;
+        if (EnLista(carpeta) is null)
+        {
+            CategoriaSeleccionada = Categorias[0];
+            DuplicadosSeleccionado = OpcionesDuplicados[0];
+        }
+        SubcarpetaSeleccionada = EnLista(carpeta) ?? Subcarpetas[0];
+        sincronizandoCarpeta = false;
+    }
+
+    SubcarpetaVista? EnLista(string carpeta) =>
+        Subcarpetas.FirstOrDefault(s => string.Equals(s.Carpeta, carpeta, StringComparison.OrdinalIgnoreCase));
 
     partial void OnEnviarDescartesAPapeleraChanged(bool value) => OnPropertyChanged(nameof(TextoConfirmacion));
 
@@ -281,6 +324,7 @@ public partial class RevisionViewModel : ViewModelBase
         TextoSeleccion = $"{Formato.Cantidad(filas.Count(f => f.Elegida))} de {Formato.Cantidad(filas.Count)} archivos seleccionados";
         foreach (var c in Categorias)
             c.Eleccion = Estado(c.Categoria is CategoriaPlan cat ? porCategoria[cat] : filas);
+        foreach (var c in CarpetasDelBackup) c.Eleccion = Estado(porCarpeta[c.Carpeta!]);
         TodosVisiblesElegidos = Estado(FilasVisibles);
         PedirConfirmacionCommand.NotifyCanExecuteChanged();
     }
@@ -294,6 +338,13 @@ public partial class RevisionViewModel : ViewModelBase
     void ElegirCategoria(CategoriaVista? categoria)
     {
         if (categoria is not null) Elegir(categoria.Categoria is CategoriaPlan c ? porCategoria[c] : filas);
+    }
+
+    /// <summary>Selecciona (o quita) una subcarpeta entera, con todas sus categorias.</summary>
+    [RelayCommand]
+    void ElegirCarpeta(SubcarpetaVista? carpeta)
+    {
+        if (carpeta?.Carpeta is string c && porCarpeta.TryGetValue(c, out var suyas)) Elegir(suyas);
     }
 
     [RelayCommand]
@@ -312,8 +363,9 @@ public partial class RevisionViewModel : ViewModelBase
         if (await principal.Dialogos.GuardarCsv("Guardar el plan", nombre, Destino) is not string ruta) return;
         try
         {
-            PlanCsv.Escribir(plan, ruta);
-            Mensaje = $"Plan guardado en {ruta}";
+            // Lo que se va a organizar: solo lo seleccionado, como el plan que queda al organizar
+            PlanCsv.Escribir(aOrganizar, ruta);
+            Mensaje = $"Plan guardado en {ruta} ({Formato.Cantidad(aOrganizar.Count)} archivos seleccionados)";
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
@@ -412,8 +464,12 @@ public partial class OpcionDuplicados(FiltroDuplicados filtro, string nombre) : 
 }
 
 /// <summary>Una subcarpeta del backup con sus archivos; sin carpeta es "Todas".</summary>
-public sealed class SubcarpetaVista(string? carpeta, int archivos, long bytes)
+public sealed partial class SubcarpetaVista(string? carpeta, int archivos, long bytes) : ObservableObject
 {
+    /// <summary>En el menu: si sus archivos estan seleccionados para organizar (null: algunos).</summary>
+    [ObservableProperty]
+    public partial bool? Eleccion { get; set; }
+
     public string? Carpeta { get; } = carpeta;
 
     public string Nombre => Carpeta switch

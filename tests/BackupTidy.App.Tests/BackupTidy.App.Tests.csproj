@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Headless" Version="12.1.4" />
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\BackupTidy.App\BackupTidy.App.csproj" />
+  </ItemGroup>
+
+  <!-- Las mismas ayudas que las pruebas del motor: carpetas temporales y copias de iTunes de prueba -->
+  <ItemGroup>
+    <Compile Include="..\BackupTidy.Tests\CarpetaTemporal.cs" Link="Compartido\CarpetaTemporal.cs" />
+    <Compile Include="..\BackupTidy.Tests\Itunes\CopiaDePrueba.cs" Link="Compartido\CopiaDePrueba.cs" />
+    <Compile Include="..\BackupTidy.Tests\Itunes\EscritorPlist.cs" Link="Compartido\EscritorPlist.cs" />
+  </ItemGroup>
+
+</Project>

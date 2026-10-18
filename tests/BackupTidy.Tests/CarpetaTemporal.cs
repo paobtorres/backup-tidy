@@ -18,5 +18,20 @@ sealed class CarpetaTemporal : IDisposable
 
     public string Crear(string relativa, string contenido) => Crear(relativa, System.Text.Encoding.UTF8.GetBytes(contenido));
 
-    public void Dispose() => Directory.Delete(Ruta, recursive: true);
+    // Una vista previa que se carga en segundo plano puede tener un archivo abierto un momento: se reintenta
+    public void Dispose()
+    {
+        for (var intento = 1; ; intento++)
+        {
+            try
+            {
+                Directory.Delete(Ruta, recursive: true);
+                return;
+            }
+            catch (IOException) when (intento < 40)
+            {
+                Thread.Sleep(50);
+            }
+        }
+    }
 }

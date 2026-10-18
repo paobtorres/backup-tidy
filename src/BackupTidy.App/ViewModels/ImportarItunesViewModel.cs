@@ -29,7 +29,8 @@ public partial class ImportarItunesViewModel : ViewModelBase
     // La carpeta que se sugirio para la copia elegida: si no se cambio, al elegir otra copia se sugiere la suya
     string? sugerida;
 
-    public ImportarItunesViewModel(MainViewModel principal)
+    /// <param name="ubicaciones">Donde buscar copias; por defecto, donde las guarda iTunes.</param>
+    public ImportarItunesViewModel(MainViewModel principal, IEnumerable<string>? ubicaciones = null)
     {
         this.principal = principal;
         Contenidos =
@@ -38,7 +39,7 @@ public partial class ImportarItunesViewModel : ViewModelBase
             new(this, ContenidoItunes.Editadas, "Versiones editadas", "Lo editado en el iPhone, al lado del original como IMG_1234_editada"),
             new(this, ContenidoItunes.WhatsApp, "WhatsApp", "Fotos y videos de los chats, sin stickers ni notas de voz"),
         ];
-        _ = Buscar();
+        _ = Buscar((ubicaciones ?? CopiaItunes.UbicacionesHabituales()).ToList());
     }
 
     [ObservableProperty]
@@ -144,11 +145,11 @@ public partial class ImportarItunesViewModel : ViewModelBase
 
     bool PuedeCancelar => Extrayendo;
 
-    async Task Buscar()
+    async Task Buscar(IReadOnlyList<string> ubicaciones)
     {
         try
         {
-            var copias = await Task.Run(() => CopiaItunes.Buscar(CopiaItunes.UbicacionesHabituales()));
+            var copias = await Task.Run(() => CopiaItunes.Buscar(ubicaciones));
             Copias = copias.Select(c => new CopiaVista(c)).ToList();
             Seleccionada = Copias.FirstOrDefault(c => !c.Copia.Encriptada) ?? Copias.FirstOrDefault();
         }
