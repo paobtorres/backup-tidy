@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using BackupTidy.Core.Ejecucion;
+using BackupTidy.Core.Itunes;
 using BackupTidy.Core.Plan;
 
 // Herramienta de linea de comandos para correr el motor sobre carpetas reales (pruebas y validacion).
@@ -60,6 +61,48 @@ try
             Console.WriteLine($"Restaurados: {r.Restaurados}  Omitidos: {r.Omitidos}  En la Papelera (restaurar desde ahi): {r.EnPapelera}");
             return 0;
         }
+        case "copias-itunes":
+        {
+            var ubicaciones = opciones.GetValueOrDefault("en") is { Count: > 0 } en ? en : CopiaItunes.UbicacionesHabituales();
+            var copias = CopiaItunes.Buscar(ubicaciones);
+            if (copias.Count == 0) Console.WriteLine("No hay copias de iTunes en: " + string.Join(", ", ubicaciones));
+            foreach (var copia in copias)
+            {
+                Console.WriteLine($"{copia.Dispositivo}  iOS {copia.VersionIos}  {copia.Fecha?.ToLocalTime():yyyy-MM-dd HH:mm}{(copia.Encriptada ? "  (encriptada)" : "")}");
+                Console.WriteLine($"  {copia.Carpeta}");
+                if (copia.Encriptada) continue;
+                foreach (var g in copia.Listar(ContenidoItunes.Todo).GroupBy(a => a.Contenido))
+                    Console.WriteLine($"  {g.Key,-10}{g.Count(),8} archivos{g.Sum(a => a.Bytes) / 1073741824.0,10:N2} GB");
+            }
+            return 0;
+        }
+        case "extraer-itunes":
+        {
+            var copia = CopiaItunes.Abrir(Requerida("copia"));
+            var salida = Requerida("salida");
+            var contenido = opciones.GetValueOrDefault("contenido") is { Count: > 0 } lista
+                ? lista.SelectMany(v => v.Split(',')).Aggregate(ContenidoItunes.Ninguno, (c, v) => c | Enum.Parse<ContenidoItunes>(v, ignoreCase: true))
+                : ContenidoItunes.Todo;
+            var archivos = copia.Listar(contenido);
+            // Para probar con una parte: los primeros N
+            if (opciones.GetValueOrDefault("maximo") is [var maximo]) archivos = archivos.Take(int.Parse(maximo, CultureInfo.InvariantCulture)).ToList();
+
+            Directory.CreateDirectory(salida);
+            var pendientes = ExtractorItunes.BytesPendientes(archivos, salida);
+            var libres = new DriveInfo(Path.GetPathRoot(Path.GetFullPath(salida))!).AvailableFreeSpace;
+            Console.WriteLine($"{copia.Dispositivo}: {archivos.Count} archivos ({contenido}), faltan copiar {pendientes / 1073741824.0:N2} GB; libres {libres / 1073741824.0:N2} GB");
+            if (pendientes > libres)
+            {
+                Console.Error.WriteLine("ERROR: no hay espacio suficiente en el disco de la salida.");
+                return 1;
+            }
+            var r = ExtractorItunes.Extraer(archivos, salida, new Progress<(int Hechos, int Total)>(p => Progreso("Copiando", p.Hechos, p.Total)));
+            Console.WriteLine();
+            foreach (var error in r.Errores) Console.WriteLine("ERROR: " + error);
+            Console.WriteLine($"Copiados: {r.Copiados} ({r.BytesCopiados / 1073741824.0:N2} GB)  Ya estaban: {r.YaEstaban}  Errores: {r.Errores.Count}");
+            Console.WriteLine($"Listo para analizar: {Path.GetFullPath(salida)}");
+            return r.Errores.Count > 0 ? 2 : 0;
+        }
         default:
             return Ayuda();
     }
@@ -83,6 +126,11 @@ static int Ayuda()
                     Mueve segun el plan y registra cada movimiento.
           deshacer  --registro <movimientos.csv>
                     Devuelve cada archivo a su lugar.
+          copias-itunes [--en <carpeta>]...
+                    Lista las copias de seguridad de iTunes y cuanto hay para extraer de cada una.
+          extraer-itunes --copia <carpeta> --salida <carpeta> [--contenido carrete,editadas,whatsapp] [--maximo N]
+                    Copia fotos y videos con su nombre y fecha reales, para analizar la salida como un backup.
+                    La copia de iTunes no se modifica. Si se corta, repetir el comando sigue donde quedo.
         """);
     return 1;
 }
