@@ -13,6 +13,12 @@ queda registrado y se puede deshacer.
 2. **Análisis**: solo lee; se puede cancelar.
 3. **Revisión**: resumen por categoría, lista de archivos con su destino y fecha, vista previa
    (los duplicados lado a lado con la copia que se conserva). Se puede guardar el plan en CSV.
+   JPG, PNG, GIF, BMP y WebP se muestran siempre, ya derechos según la orientación EXIF. HEIC, RAW,
+   TIFF y videos usan la miniatura de Windows (la misma del Explorador), así que dependen de los
+   códecs instalados: [HEIF](https://apps.microsoft.com/detail/9pmmsr1cgpwg),
+   [HEVC](https://apps.microsoft.com/detail/9nmzlz57r3t7) y
+   [RAW](https://apps.microsoft.com/detail/9nctdw2w1bh8) de Microsoft Store. Si falta el de HEVC,
+   las Live Photos muestran su foto en lugar del video.
 4. **Resultado**: mueve, muestra lo hecho y permite deshacer.
 
 El plan y el registro de movimientos de cada organización quedan en `<carpeta organizada>\_reportes\`.
