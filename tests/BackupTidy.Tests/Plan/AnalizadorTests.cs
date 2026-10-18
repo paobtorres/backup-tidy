@@ -242,4 +242,35 @@ public sealed class AnalizadorTests : IDisposable
         Assert.Equal(2, resumen.Single(r => r.Categoria == CategoriaPlan.Fotos).Archivos);
         Assert.Equal(4, resumen.Single(r => r.Categoria == CategoriaPlan.Descartar).Bytes);
     }
+
+    [Fact]
+    public void Resumen_por_subcarpeta_separando_duplicados()
+    {
+        var foto = Foto("2019:03:15 12:12:00");
+        var otra = Foto("2019:03:16 12:12:00");
+        origen.Crear(@"DCIM\100APPLE\IMG_0001.JPG", foto);
+        origen.Crear(@"DCIM\100APPLE\IMG_0002.JPG", otra);
+        origen.Crear(@"Copias\IMG_0001.JPG", foto);
+        origen.Crear("suelta.opus", "opus");
+        var plan = Analizar();
+
+        Assert.Equal([("", 1, 4L), ("Copias", 1, foto.Length), (@"DCIM\100APPLE", 2, foto.Length + otra.Length)],
+                     Analizador.ResumenPorCarpeta(plan, origen.Ruta));
+        // Una de las dos copias de IMG_0001 es el duplicado; lo demas no esta duplicado
+        var duplicados = Analizador.ResumenPorCarpeta(plan.Where(f => f.EsDuplicado), origen.Ruta);
+        var sinDuplicar = Analizador.ResumenPorCarpeta(plan.Where(f => !f.EsDuplicado), origen.Ruta);
+        Assert.Equal((1, (long)foto.Length), (duplicados.Single().Archivos, duplicados.Single().Bytes));
+        Assert.Equal(3, sinDuplicar.Sum(r => r.Archivos));
+    }
+
+    [Fact]
+    public void Carpeta_de_un_archivo_fuera_del_backup_es_la_ruta_completa()
+    {
+        var fuera = new FilaPlan(CategoriaPlan.JpgReemplazado, Destino("Fotos", "2019", "IMG_0001.JPG"), null, 1);
+        var adentro = new FilaPlan(CategoriaPlan.Fotos, origen[@"DCIM\100APPLE\IMG_0001.JPG"], null, 1);
+
+        Assert.Equal(Destino("Fotos", "2019"), Analizador.CarpetaDe(fuera, origen.Ruta));
+        Assert.Equal(@"DCIM\100APPLE", Analizador.CarpetaDe(adentro, origen.Ruta));
+        Assert.Equal("", Analizador.CarpetaDe(new FilaPlan(CategoriaPlan.Fotos, origen["a.jpg"], null, 1), origen.Ruta));
+    }
 }

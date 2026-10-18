@@ -173,6 +173,25 @@ public static class Analizador
              .OrderByDescending(r => r.Item3)
              .ToList();
 
+    /// <summary>
+    /// Carpeta del archivo relativa al backup ("" si esta en la raiz). Si esta fuera del backup (un JPG ya
+    /// organizado que reemplaza su HEIC) es la ruta completa.
+    /// </summary>
+    public static string CarpetaDe(FilaPlan fila, string origen)
+    {
+        var carpeta = Path.GetDirectoryName(fila.Origen) ?? "";
+        var relativa = Path.GetRelativePath(origen, carpeta);
+        if (relativa == ".") return "";
+        return relativa.StartsWith("..") || Path.IsPathRooted(relativa) ? carpeta : relativa;
+    }
+
+    /// <summary>Archivos y bytes por subcarpeta del backup (la carpeta donde esta cada archivo), por nombre.</summary>
+    public static IReadOnlyList<(string Carpeta, int Archivos, long Bytes)> ResumenPorCarpeta(IEnumerable<FilaPlan> filas, string origen) =>
+        filas.GroupBy(f => CarpetaDe(f, origen), StringComparer.OrdinalIgnoreCase)
+             .Select(g => (g.Key, g.Count(), g.Sum(f => f.Bytes)))
+             .OrderBy(r => r.Key, StringComparer.OrdinalIgnoreCase)
+             .ToList();
+
     static string? RutaOriginal(Duplicado? duplicado, string origen) => duplicado switch
     {
         null => null,

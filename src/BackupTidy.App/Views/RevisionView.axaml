@@ -10,6 +10,13 @@
             <Setter Property="CornerRadius" Value="8" />
             <Setter Property="Margin" Value="0,1" />
         </Style>
+        <Style Selector="ListBox.segmentos ListBoxItem">
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Margin" Value="2,0" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Borde}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
         <Style Selector="ListBox.filas ListBoxItem">
             <Setter Property="Padding" Value="12,7" />
         </Style>
@@ -97,10 +104,45 @@
             <!-- Lista de archivos -->
             <Border Grid.Column="1" Classes="tarjeta" Padding="0">
                 <DockPanel>
-                    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="14,12">
-                        <TextBox Text="{Binding Busqueda}" PlaceholderText="Buscar por nombre o carpeta" />
-                        <CheckBox Grid.Column="1" Margin="12,0,0,0" IsChecked="{Binding SoloDudosas}" Content="{Binding TextoDudosas}" />
-                    </Grid>
+                    <StackPanel DockPanel.Dock="Top" Margin="14,12" Spacing="10">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBox Text="{Binding Busqueda}" PlaceholderText="Buscar por nombre o carpeta" />
+                            <CheckBox Grid.Column="1" Margin="12,0,0,0" IsChecked="{Binding SoloDudosas}" Content="{Binding TextoDudosas}" />
+                        </Grid>
+                        <!-- Duplicados o no, con cuanto hay en cada uno -->
+                        <ListBox Classes="segmentos" ItemsSource="{Binding OpcionesDuplicados}" SelectedItem="{Binding DuplicadosSeleccionado}"
+                                 Background="Transparent">
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Rows="1" />
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:OpcionDuplicados">
+                                    <StackPanel Spacing="1">
+                                        <TextBlock Text="{Binding Nombre}" FontWeight="SemiBold" />
+                                        <TextBlock Classes="secundario" FontSize="12">
+                                            <Run Text="{Binding Cantidad}" /><Run Text=" · " /><Run Text="{Binding Tamano}" />
+                                        </TextBlock>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <!-- Cada subcarpeta del backup con lo que tiene, para verla sola -->
+                        <ComboBox ItemsSource="{Binding Subcarpetas}" SelectedItem="{Binding SubcarpetaSeleccionada}"
+                                  HorizontalAlignment="Stretch" MaxDropDownHeight="420"
+                                  AutomationProperties.Name="Subcarpeta">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:SubcarpetaVista">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Text="{Binding Nombre}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Column="1" Classes="secundario" FontSize="12" Text="{Binding Resumen}"
+                                                   Margin="12,0,0,0" VerticalAlignment="Center" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
                     <Border DockPanel.Dock="Top" Height="1" Background="{DynamicResource Borde}" />
                     <Panel>
                         <ListBox Classes="filas" ItemsSource="{Binding FilasVisibles}" SelectedItem="{Binding Seleccionada}"

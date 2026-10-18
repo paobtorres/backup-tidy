@@ -36,6 +36,9 @@ public sealed record FilaPlan(CategoriaPlan Categoria, string Origen, string? De
                               DateTime? Fecha = null, FuenteFecha? FuenteFecha = null, string? Hash = null, string Nota = "",
                               string? Relacionado = null)
 {
+    /// <summary>Copia de otro archivo (del backup o ya organizado), vista previa convertida o duplicado probable.</summary>
+    public bool EsDuplicado => Categoria is CategoriaPlan.Duplicados or CategoriaPlan.DocumentosDuplicados;
+
     public static CategoriaPlan CategoriaDeMedia(CategoriaMedia categoria) => categoria switch
     {
         CategoriaMedia.Apps => CategoriaPlan.Apps,

@@ -22,6 +22,10 @@ public partial class RevisionViewModel : ViewModelBase
     readonly Lazy<Dictionary<string, string>> fotosLive;
     int cargaVista;
 
+    // Lo que pasa los filtros de categoria, fechas, busqueda y duplicados: de ahi salen las subcarpetas
+    List<FilaVista> filtradas = [];
+    bool armandoSubcarpetas;
+
     public RevisionViewModel(MainViewModel principal, OpcionesAnalisis opciones, ResultadoAnalisis resultado)
     {
         this.principal = principal;
@@ -47,6 +51,13 @@ public partial class RevisionViewModel : ViewModelBase
 
         Categorias = [new CategoriaVista(null, plan.Count, plan.Sum(f => f.Bytes)),
                       .. Analizador.Resumen(plan).Select(r => new CategoriaVista(r.Categoria, r.Archivos, r.Bytes))];
+        OpcionesDuplicados =
+        [
+            new(FiltroDuplicados.Todos, "Todos"),
+            new(FiltroDuplicados.Duplicados, "Duplicados"),
+            new(FiltroDuplicados.SinDuplicar, "Sin duplicar"),
+        ];
+        DuplicadosSeleccionado = OpcionesDuplicados[0];
         CategoriaSeleccionada = Categorias[0];
     }
 
@@ -74,6 +85,19 @@ public partial class RevisionViewModel : ViewModelBase
 
     [ObservableProperty]
     public partial CategoriaVista? CategoriaSeleccionada { get; set; }
+
+    /// <summary>Todos, solo los duplicados o solo lo que no esta duplicado; cada uno con su cantidad y tamano.</summary>
+    public IReadOnlyList<OpcionDuplicados> OpcionesDuplicados { get; }
+
+    [ObservableProperty]
+    public partial OpcionDuplicados? DuplicadosSeleccionado { get; set; }
+
+    /// <summary>"Todas" y cada subcarpeta del backup con lo que queda despues de los demas filtros.</summary>
+    [ObservableProperty]
+    public partial IReadOnlyList<SubcarpetaVista> Subcarpetas { get; set; } = [];
+
+    [ObservableProperty]
+    public partial SubcarpetaVista? SubcarpetaSeleccionada { get; set; }
 
     [ObservableProperty]
     public partial string Busqueda { get; set; } = "";
@@ -120,6 +144,13 @@ public partial class RevisionViewModel : ViewModelBase
 
     partial void OnSoloDudosasChanged(bool value) => Filtrar();
 
+    partial void OnDuplicadosSeleccionadoChanged(OpcionDuplicados? value) => Filtrar();
+
+    partial void OnSubcarpetaSeleccionadaChanged(SubcarpetaVista? value)
+    {
+        if (!armandoSubcarpetas) MostrarSubcarpeta();
+    }
+
     partial void OnEnviarDescartesAPapeleraChanged(bool value) => OnPropertyChanged(nameof(TextoConfirmacion));
 
     async partial void OnSeleccionadaChanged(FilaVista? value)
@@ -161,7 +192,30 @@ public partial class RevisionViewModel : ViewModelBase
             var texto = Busqueda.Trim();
             visibles = visibles.Where(f => f.Fila.Origen.Contains(texto, StringComparison.OrdinalIgnoreCase));
         }
-        FilasVisibles = visibles.ToList();
+        var conFiltros = visibles.ToList();
+
+        // Cuanto hay en cada opcion con los demas filtros, para ver de un vistazo que parte esta duplicada
+        foreach (var opcion in OpcionesDuplicados) opcion.Contar(conFiltros.Where(f => opcion.Incluye(f.Fila)).Select(f => f.Fila));
+        var filtro = DuplicadosSeleccionado ?? OpcionesDuplicados[0];
+        filtradas = conFiltros.Where(f => filtro.Incluye(f.Fila)).ToList();
+
+        // Se rearman las subcarpetas con sus cantidades; la elegida se mantiene si sigue habiendo algo en ella
+        var anterior = SubcarpetaSeleccionada?.Carpeta;
+        armandoSubcarpetas = true;
+        Subcarpetas = [new SubcarpetaVista(null, filtradas.Count, filtradas.Sum(f => f.Fila.Bytes)),
+                       .. Analizador.ResumenPorCarpeta(filtradas.Select(f => f.Fila), Origen)
+                                    .Select(r => new SubcarpetaVista(r.Carpeta, r.Archivos, r.Bytes))];
+        SubcarpetaSeleccionada = Subcarpetas.FirstOrDefault(s => anterior is not null && string.Equals(s.Carpeta, anterior, StringComparison.OrdinalIgnoreCase))
+                                 ?? Subcarpetas[0];
+        armandoSubcarpetas = false;
+        MostrarSubcarpeta();
+    }
+
+    void MostrarSubcarpeta()
+    {
+        FilasVisibles = SubcarpetaSeleccionada?.Carpeta is string carpeta
+            ? filtradas.Where(f => string.Equals(f.Carpeta, carpeta, StringComparison.OrdinalIgnoreCase)).ToList()
+            : filtradas;
         Seleccionada = FilasVisibles.Count > 0 ? FilasVisibles[0] : null;
     }
 
@@ -235,6 +289,57 @@ public sealed class CategoriaVista(CategoriaPlan? categoria, int archivos, long 
         categoria is CategoriaPlan c ? Colores.GetValueOrDefault(c, "#9AA3AE") : "#7D8794"));
 }
 
+public enum FiltroDuplicados { Todos, Duplicados, SinDuplicar }
+
+/// <summary>Una opcion del filtro de duplicados, con cuanto hay en ella.</summary>
+public partial class OpcionDuplicados(FiltroDuplicados filtro, string nombre) : ObservableObject
+{
+    public FiltroDuplicados Filtro { get; } = filtro;
+
+    public string Nombre { get; } = nombre;
+
+    [ObservableProperty]
+    public partial string Cantidad { get; set; } = "";
+
+    [ObservableProperty]
+    public partial string Tamano { get; set; } = "";
+
+    public bool Incluye(FilaPlan fila) => Filtro switch
+    {
+        FiltroDuplicados.Duplicados => fila.EsDuplicado,
+        FiltroDuplicados.SinDuplicar => !fila.EsDuplicado,
+        _ => true,
+    };
+
+    public void Contar(IEnumerable<FilaPlan> filas)
+    {
+        int archivos = 0;
+        long bytes = 0;
+        foreach (var f in filas)
+        {
+            archivos++;
+            bytes += f.Bytes;
+        }
+        Cantidad = Formato.Cantidad(archivos);
+        Tamano = Formato.Tamano(bytes);
+    }
+}
+
+/// <summary>Una subcarpeta del backup con sus archivos; sin carpeta es "Todas".</summary>
+public sealed class SubcarpetaVista(string? carpeta, int archivos, long bytes)
+{
+    public string? Carpeta { get; } = carpeta;
+
+    public string Nombre => Carpeta switch
+    {
+        null => "Todas las subcarpetas",
+        "" => "(carpeta principal)",
+        var c => c,
+    };
+
+    public string Resumen { get; } = $"{Formato.Cantidad(archivos)} {(archivos == 1 ? "archivo" : "archivos")} · {Formato.Tamano(bytes)}";
+}
+
 /// <summary>Una fila del plan preparada para mostrar.</summary>
 public sealed class FilaVista
 {
@@ -242,8 +347,7 @@ public sealed class FilaVista
     {
         Fila = fila;
         Nombre = Path.GetFileName(fila.Origen);
-        var carpeta = Path.GetDirectoryName(fila.Origen) ?? "";
-        Carpeta = Relativa(origen, carpeta) ?? carpeta;
+        Carpeta = Analizador.CarpetaDe(fila, origen);
         Destino = fila.Destino is null ? "Queda en su lugar" : Relativa(destino, fila.Destino) ?? fila.Destino;
         Color = new CategoriaVista(fila.Categoria, 0, 0).Color;
     }
